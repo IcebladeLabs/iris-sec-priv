@@ -75,9 +75,11 @@ $ conda install pytorch-cuda=12.1 -c nvidia -c pytorch
 Replace 12.1 with the CUDA version compatible with your GPU and drivers, if needed.
 
 #### Get the JDKs needed 
-We have included CWE-Bench-Java as a submodule in IRIS in the data folder. We have also provided scripts to fetch and build Java projects to be used with IRIS. 
 
-For building, we need Java distributions as well as Maven and Gradle for package management. In case you have a different system than Linux x64, please modify `data/cwe-bench-java/scripts/jdk_version.json`, `data/cwe-bench-java/scripts/mvn_version.json`, and `data/cwe-bench-java/scripts/gradle_version.json` to specify the corresponding JDK/MVN/Gradle files. In addition, please prepare 3 versions of JDK and put them under the java-env folder. Oracle requires an account to download the JDKs, and we are unable to provide an automated script. Download from the following URLs:
+We have also provided scripts to fetch and build Java projects to be used with IRIS. 
+
+For building, we need Java distributions as well as Maven and Gradle for package management. In case you have a different system than Linux x64, please modify `dep_configs.json`
+ to specify the corresponding JDK/MVN/Gradle paths. Download from the following URLs:
 
 JDK 7u80: https://www.oracle.com/java/technologies/javase/javase7-archive-downloads.html
 
@@ -133,102 +135,37 @@ $ which codeql
 ```
 Then update `CODEQL_DIR` in `src/config.py`. 
 
-#### Step 4. Check IRIS directory configuration in `src/config.py`
-By running the provided scripts, you won't have to modify `src/config.py`. Double check that the paths in the configuration are correct. Each path variable has a comment explaining its purpose.
+#### Step 4. Check IRIS directory configuration in `src/config.py` and dependency configurations in `dep_configs.json`
+By running the provided scripts, you won't have to modify `src/config.py`. You can update `dep_configs.json` to specify the paths to the JDKs, Maven, and Gradle versions you want to use. Double check that the paths in the configuration are correct. Each path variable has a comment explaining its purpose.
 
 </details>
 
-### Environment Setup for Docker
-<details>
-<summary>Installation Steps</summary>
+### Environment Setup for Docker 
+All the dependencies for IRIS are included in the Dockerfile. You can run IRIS in a Docker container without needing to install anything on your host machine.
 
-#### Step 1. Docker Setup
-Clone iris. The dockerfile has scripts that will create the conda environment, clones `cwe-bench-java`, and installs the patched CodeQL version. Before building the dockerfile you will need download the JDK versions needed. Then the dockerfile copies them to the container. 
+All the jdk/mvn/gradle dependencies are now in `dep_configs.json`. You can modify this file to specify the paths to the JDKs, Maven, and Gradle versions you want to use.
 
-#### Get the JDKs needed 
-For building, we need Java distributions as well as Maven and Gradle for package management. In addition, please prepare 3 versions of JDK and **put them in the iris root directory**. Oracle requires an account to download the JDKs, and we are unable to provide an automated script. Download from the following URLs:
-
-JDK 7u80: https://www.oracle.com/java/technologies/javase/javase7-archive-downloads.html
-
-JDK 8u202: https://www.oracle.com/java/technologies/javase/javase8-archive-downloads.html
-
-JDK 17: https://www.oracle.com/java/technologies/javase/jdk17-archive-downloads.html (Make sure to download specifically JDK 17, not 17.X.X)
-
-At this point, your `iris` directory should look like 
-```
-- /iris
-  - jdk-7u80-linux-x64.tar.gz
-  - jdk-8u202-linux-x64.tar.gz
-  - jdk-17_linux-x64_bin.tar.gz
+```bash 
+git clone git@github.com:iris-sast/iris-sec.git
+cd iris-sec
+docker build -f dockers/Dockerfile --platform linux/x86_64 -t iris:latest .
+docker run --platform=linux/amd64 -it iris:latest
+conda activate iris
+python3 scripts/setup.py --filter perwendel__spark_CVE-2018-9159_2.7.1
+python3 scripts/build_codeql_dbs.py --project perwendel__spark_CVE-2018-9159_2.7.1
+GOOGLE_API_KEY=<your_google_api_key> python3 src/neusym_vul.py --query cwe-022wLLM --run-id test --llm gemini-1.5-flash  perwendel__spark_CVE-2018-9159_2.7.1
 ```
 
-Now, build and run the docker container.
+These steps should produce results in the `output` directory. You should see a `cwe-022wLLM-final` directory with `results.json` containing the statistics of the run.
+
+Running with GPUs:
 ```bash
-# build for Windows/ Mac with Intel
-$ docker build -t iris .
-# build for ARM architecture/ Apple Silicon
-$ docker build --platform=linux/amd64 -t iris .
-# run
-$ docker run -it iris
-# If run with all GPUs 
-$ docker run --gpus all -it iris
-# run with specific GPUs
-$ docker run --gpus '"device=0,1"' -it iris
+docker run --platform=linux/amd64 --gpus all -it iris:latest
 ```
-
-If you choose to run with GPUs and have a CUDA-capable GPU and want to enable hardware acceleration, install the appropriate CUDA toolkit:
+or
 ```bash
-$ conda activate iris
-$ conda install pytorch-cuda=12.1 -c nvidia -c pytorch
+docker run --gpus '"device=0,1"' -it iris:latest
 ```
-Replace 12.1 with the CUDA version compatible with your GPU and drivers, if needed.
-
-Confirm that the patched CodeQL is in your PATH.
-
-After this, proceed to step 2 on fetching and building Java projects.
-
-#### Step 2. Fetch and build Java projects
-Now run the fetch and build script. You can also choose to fetch and not build, or specify a set of projects. You can find project names in the project_slug column in `cwe-bench-java/data/build_info.csv`.
-```bash
-# fetch projects and build them
-$ python3 data/cwe-bench-java/scripts/setup.py
-
-# fetch projects and don't build them
-$ python3 data/cwe-bench-java/scripts/setup.py --no-build
-
-# example - build the perwendel__spark_CVE-2018-9159_2.7.1 project 
-$ python3 data/cwe-bench-java/scripts/setup.py --filter perwendel__spark_CVE-2018-9159_2.7.1
-
-# example - only build projects under CWE-022 and CWE-078
-$ python3 data/cwe-bench-java/scripts/setup.py --cwe CWE-022 CWE-078 
-
-# example - only build keycloak projects 
-$ python3 data/cwe-bench-java/scripts/setup.py --filter keycloak 
-
-# example - do not build any apache related projects
-$ python3 data/cwe-bench-java/scripts/setup.py --exclude apache       
-```
-This will create the `build-info` and `project-sources` directories. It will also install JDK, Maven, and Gradle versions used to build the projects in `cwe-bench-java`. `build-info` is used to store build information and `project-sources` is where the fetched projects are stored.
-
-#### Step 3. Generate CodeQL databases
-To use CodeQL, you will need to generate a CodeQL database for each project. We have provided a script to automate this. The script will generate databases for all projects found in `data/cwe-bench-java/project-sources`. To generate a database for a specific project, use the `--project` argument. 
-```bash
-# build CodeQL databases for all projects in project-sources
-$ python3 scripts/build_codeql_dbs.py 
-
-# build a specific CodeQL database given the project slug
-$ python3 scripts/build_codeql_dbs.py --project perwendel__spark_CVE-2018-9159_2.7.1 
-```
-Note - if the script fails due to trying to locate CodeQL, run the following to find the path:
-```bash
-$ which codeql
-```
-Then update `CODEQL_DIR` in `src/config.py`. 
-
-#### Step 4. Check IRIS directory configuration in `src/config.py`
-By running the provided scripts, you won't have to modify `src/config.py`. Double check that the paths in the configuration are correct. Each path variable has a comment explaining its purpose.
-
-</details>
 
 ### Environment Setup for Other Systems
 
@@ -319,7 +256,7 @@ output
 
 The easiest way to run IRIS on a Java project not in CWE-Bench-Java is to make the following changes:
 
-1. Add the project info to `data/cwe-bench-java/data/project_info.csv`. For instance, to run the latest perwendel/spark version:
+1. Add the project info to `data/project_info.csv`. For instance, to run the latest perwendel/spark version:
 
 ```
 ID,perwendel__spark_latest,,,,,perwendel,spark,latest,,,,

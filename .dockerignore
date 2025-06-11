@@ -1,2 +1,0 @@
-# we instead clone cwe-bench-java within the docker container
-data/cwe-bench-java/

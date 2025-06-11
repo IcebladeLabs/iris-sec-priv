@@ -9,3 +9,9 @@ outputs*
 output/
 
 **/__pycache__
+.vscode/settings.json
+codeql/
+data/build-info
+build-info/
+data/codeql-dbs/
+project-sources

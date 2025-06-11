@@ -4,76 +4,27 @@ import argparse
 import subprocess
 from pathlib import Path
 import sys
+import json
 sys.path.append(str(Path(__file__).parent.parent))
 
-from src.config import CWE_BENCH_JAVA_DIR, CODEQL_DB_PATH, PROJECT_SOURCE_CODE_DIR
+from src.config import CODEQL_DB_PATH, PROJECT_SOURCE_CODE_DIR, IRIS_ROOT_DIR, BUILD_INFO, DEP_CONFIGS, DATA_DIR
+ALLVERSIONS = json.load(open(DEP_CONFIGS))
 
-def verify_java_installation(java_home):
-    if not os.path.exists(java_home):
-        raise Exception(f"JAVA_HOME directory does not exist: {java_home}")
-    
-    java_exe = os.path.join(java_home, 'bin', 'java')
-    if not os.path.exists(java_exe):
-        raise Exception(f"Java executable not found at: {java_exe}")
-    
-    javac_exe = os.path.join(java_home, 'bin', 'javac')
-    if not os.path.exists(javac_exe):
-        raise Exception(f"Javac executable not found at: {javac_exe}")
-
-def verify_maven_installation(maven_path):
-    if not os.path.exists(maven_path):
-        raise Exception(f"Maven directory does not exist: {maven_path}")
-    
-    mvn_exe = os.path.join(maven_path, 'mvn')
-    if not os.path.exists(mvn_exe):
-        raise Exception(f"Maven executable not found at: {mvn_exe}")
-
-def find_java_home(java_version, java_env_path):
-    """
-    Find the appropriate Java home directory based on version and available installations.
-    
-    Args:
-        java_version (str): Version string from build_info.csv
-        java_env_path (str): Base path for Java installations
-    
-    Returns:
-        str: Path to the appropriate Java installation
-    """
-    if 'u' in java_version:
-        # Handle Java 7 and 8 style versions (e.g., 8u202 -> jdk1.8.0_202)
-        main_ver = java_version.split('u')[0]
-        update_ver = java_version.split('u')[1]
-        java_home = os.path.abspath(os.path.join(java_env_path, f"jdk1.{main_ver}.0_{update_ver}"))
-    else:
-        # Handle Java 9+ style versions
-        # First try exact match (e.g., jdk-17)
-        java_home = os.path.abspath(os.path.join(java_env_path, f"jdk-{java_version}"))
-        
-        if not os.path.exists(java_home):
-            # Try finding a matching directory with a more specific version
-            possible_dirs = [d for d in os.listdir(java_env_path) 
-                           if d.startswith(f"jdk-{java_version}")]
-            if possible_dirs:
-                # Use the first matching directory
-                java_home = os.path.abspath(os.path.join(java_env_path, possible_dirs[0]))
-    
-    return java_home
-
-def setup_environment(row, java_env_path):
+def setup_environment(row):
     env = os.environ.copy()
     
     # Set Maven path if available
     if row['mvn_version'] != 'n/a':
-        maven_path = os.path.abspath(os.path.join(java_env_path, f"apache-maven-{row['mvn_version']}/bin"))
-        verify_maven_installation(maven_path)
-        env['PATH'] = f"{maven_path}:{env.get('PATH', '')}"
-        print(f"Maven path set to: {maven_path}")
-    
+        MAVEN_PATH = ALLVERSIONS['mvn'].get(row['mvn_version'], None)
+        env['PATH'] = f"{MAVEN_PATH}:{env.get('PATH', '')}"
+        print(f"Maven path set to: {MAVEN_PATH}")
+
     # Find and set Java home
     java_version = row['jdk_version']
-    java_home = find_java_home(java_version, java_env_path)
-    
-    verify_java_installation(java_home)
+    java_home = ALLVERSIONS['jdks'].get(row['jdk_version'], None)
+    if not java_home:
+        raise Exception(f"Java version {java_version} not found in available installations.")
+
     env['JAVA_HOME'] = java_home
     print(f"JAVA_HOME set to: {java_home}")
     
@@ -113,7 +64,10 @@ def create_codeql_database(project_slug, env, db_base_path, sources_base_path):
         print(f"Creating database at: {database_path}")
         print(f"Using source path: {source_path}")
         print(f"Using JAVA_HOME: {env.get('JAVA_HOME', 'Not set')}")
-        subprocess.run(command, env=env, check=True)
+        res=subprocess.run(command, env=env, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        if res.returncode != 0:
+            print(f"Error creating CodeQL database: {res.stderr.decode()} \n {res.stdout.decode()}")
+            raise subprocess.CalledProcessError(res.returncode, command, output=res.stdout, stderr=res.stderr)
         print(f"Successfully created CodeQL database for {project_slug}")
     except subprocess.CalledProcessError as e:
         print(f"Error creating CodeQL database for {project_slug}: {e}")
@@ -124,27 +78,22 @@ def main():
     parser.add_argument('--project', help='Specific project slug', default=None)
     parser.add_argument('--db-path', help='Base path for storing CodeQL databases', default=CODEQL_DB_PATH)
     parser.add_argument('--sources-path', help='Base path for project sources', default=PROJECT_SOURCE_CODE_DIR)
-    parser.add_argument('--cwe-bench-java-path', help='Base path to cwe-bench-java', default=CWE_BENCH_JAVA_DIR)
     args = parser.parse_args()
-    
-    cwe_bench_java_path = os.path.abspath(args.cwe_bench_java_path)
-    csv_path = os.path.join(cwe_bench_java_path, "data", "build_info.csv")
-    java_env_path = os.path.join(cwe_bench_java_path, "java-env")
 
-    with open(csv_path, 'r') as f:
+    with open(BUILD_INFO, 'r') as f:
         reader = csv.DictReader(f)
         projects = list(reader)
     
     if args.project:
         project = next((p for p in projects if p['project_slug'] == args.project), None)
         if project:
-            env = setup_environment(project, java_env_path)
+            env = setup_environment(project)
             create_codeql_database(project['project_slug'], env, args.db_path, args.sources_path)
         else:
             print(f"Project {args.project} not found in CSV file")
     else:
         for project in projects:
-            env = setup_environment(project, java_env_path)
+            env = setup_environment(project)
             create_codeql_database(project['project_slug'], env, args.db_path, args.sources_path)
 
 if __name__ == "__main__":
