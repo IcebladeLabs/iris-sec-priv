@@ -4,6 +4,7 @@ import csv
 import subprocess
 import json
 import sys
+from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent))
 from src.config import DATA_DIR, IRIS_ROOT_DIR, DEP_CONFIGS
 
@@ -56,7 +57,7 @@ def build_one_project_with_maven_attempt(project_slug, attempt):
   target_dir = f"{DATA_DIR}/project-sources/{project_slug}"
 
   print(f">> [build_one] Building `{project_slug}` with MAVEN {attempt['mvn']} and JDK {attempt['jdk']}...")
-  jdk_version = attempt.get('jdk']
+  jdk_version = attempt.get('jdk')
   mvn_version = attempt.get('mvn', None)
   JAVA_PATH = ALLVERSIONS["jdks"].get(jdk_version, None)
   MAVEN_PATH = ALLVERSIONS["mvn"].get(mvn_version, None)

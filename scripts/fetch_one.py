@@ -18,6 +18,7 @@ import argparse
 import csv
 import subprocess
 import sys
+from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent))
 from src.config import DATA_DIR
 
