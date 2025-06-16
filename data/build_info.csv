@@ -119,3 +119,5 @@ asf__nifi_CVE-2023-36542_1.22.0,success,17,3.9.8,n/a,n/a
 apache__nifi_CVE-2022-33140_1.16.2,success,17,3.9.8,n/a,n/a
 apache__dolphinscheduler_CVE-2022-34662_2.0.9,success,8u202,3.5.0,n/a,n/a
 apache__camel_CVE-2018-8041_2.20.3,success,8u202,3.5.0,n/a,n/a
+jeecgboot__jeecgboot_CVE-2022-45206_3.4.3,success,8,3.5.0,n/a,n/a
+folio-org__spring-module-core_CVE-2022-4963_2.0.0,success,17,3.5.0,n/a,n/a

@@ -36,6 +36,66 @@
      },
  """
 QUERIES = {
+  "cwe-089wLLM": {
+    "name": "cwe-089wLLM",
+    "cwe_id": "089",
+    "cwe_id_short": "89",
+    "cwe_id_tag": "CWE-89",
+    "type": "cwe-query",
+    "desc": "SQL Injection via string concatenation",
+    "queries": [
+      "cwe-queries/cwe-089/cwe-089wLLM.ql",
+      "cwe-queries/cwe-089/MySqlInjectionQuery.qll",
+      "cwe-queries/cwe-089/MySqlConcatenatedLib.qll"
+      ],
+    "prompts": {
+      "cwe_id": "CWE-089",
+      "desc": "SQL Injection via string concatenation",
+      "long_desc": """\
+SQL Injection is a critical vulnerability that arises when user input is used to construct SQL queries without proper validation. \
+This allows attackers to inject malicious SQL code into the query, bypass authentication, retrieve sensitive data, \
+or execute arbitrary commands on the database server.\
+This vulnerability occurs when applications dynamically build SQL strings using input from sources such as HTTP request parameters \
+without using parameterized queries or prepared statements. Attackers can exploit this to perform unauthorized reads, data modification, or denial of service.
+To address SQL injection, use parameterized queries, prepared statements, etc. Input validation, \
+least privilege database access, and error message suppression are also important secondary defenses.
+      """,
+      "examples": [
+        {
+          "package": "javax.servlet.http",
+          "class": "HttpServletRequest",
+          "method": "getParameter",
+          "signature": "String getParameter(String name)",
+          "sink_args": [],
+          "type": "source"
+        },
+        {
+          "package": "java.sql",
+          "class": "Statement",
+          "method": "execute",
+          "signature": "boolean execute(String sql)",
+          "sink_args": ["sql"],
+          "type": "sink"
+        },
+        {
+          "package": "java.sql",
+          "class": "Statement",
+          "method": "executeQuery",
+          "signature": "ResultSet executeQuery(String sql)",
+          "sink_args": ["sql"],
+          "type": "sink"
+        },
+        {
+          "package": "java.lang",
+          "class": "StringBuilder",
+          "method": "append",
+          "signature": "StringBuilder append(String str)",
+          "sink_args": [],
+          "type": "taint-propagator"
+        }
+      ]
+    }
+  },
   "cwe-022wLLM": {
     "name": "cwe-022wLLM",
     "type": "cwe-query",
