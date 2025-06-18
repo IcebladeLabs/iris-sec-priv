@@ -150,7 +150,6 @@ git clone git@github.com:iris-sast/iris-sec.git
 cd iris-sec
 docker build -f dockers/Dockerfile --platform linux/x86_64 -t iris:latest .
 docker run --platform=linux/amd64 -it iris:latest
-conda activate iris
 python3 scripts/setup.py --filter perwendel__spark_CVE-2018-9159_2.7.1
 python3 scripts/build_codeql_dbs.py --project perwendel__spark_CVE-2018-9159_2.7.1
 GOOGLE_API_KEY=<your_google_api_key> python3 src/neusym_vul.py --query cwe-022wLLM --run-id test --llm gemini-1.5-flash  perwendel__spark_CVE-2018-9159_2.7.1
