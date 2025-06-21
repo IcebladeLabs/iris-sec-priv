@@ -4,6 +4,7 @@ import csv
 import subprocess
 import json
 import sys
+from datetime import datetime
 from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent))
 from src.config import DATA_DIR, IRIS_ROOT_DIR, DEP_CONFIGS
@@ -50,7 +51,7 @@ ATTEMPTS = [
 ]
 
 NEWLY_BUILT = "newly-built"
-ALREDY_BUILT = "already-built"
+ALREADY_BUILT = "already-built"
 FAILED = "failed"
 
 def build_one_project_with_maven_attempt(project_slug, attempt):
@@ -198,7 +199,7 @@ def build_one_project_with_attempt(project_slug, attempt):
   # Checking if the repo has been built already
   if is_built(project_slug):
     print(f">> [build_one] {project_slug} is already built...")
-    return ALREDY_BUILT
+    return ALREADY_BUILT
 
   # Otherwise, build it directly
   if "mvn" in attempt:
@@ -216,52 +217,172 @@ def is_built(project_slug) -> bool:
   else:
     return False
 
-def save_build_result(project_slug, result, attempt):
-  build_result_dir = f"{DATA_DIR}/build_info.csv"
+def save_local_build_result(project_slug, result, attempt):
+  build_result_dir = f"{DATA_DIR}/build-info/build_info_local.csv"
+
+  # Create the build-info directory if it doesn't exist
+  os.makedirs(os.path.dirname(build_result_dir), exist_ok=True)
 
   rows = []
   if os.path.exists(build_result_dir):
     rows = list(csv.reader(open(build_result_dir)))[1:]
 
-  existed_and_mutated = False
-  desired_num_columns = 6
-  for row in rows:
-    if len(row) < desired_num_columns:
-      row += ["n/a"] * (desired_num_columns - len(row))
-    if row[0] == project_slug:
-      existed_and_mutated = True
-      row[1] = "success" if result else "failure"
-      row[2] = attempt["jdk"]
-      row[3] = attempt["mvn"] if "mvn" in attempt else "n/a"
-      row[4] = attempt["gradle"] if "gradle" in attempt else "n/a"
-      row[5] = attempt["gradlew"] if "gradlew" in attempt else "n/a"
-
-  if not existed_and_mutated:
-    rows.append([
-      project_slug,
-      "success" if result else "failure",
-      attempt["jdk"],
-      attempt["mvn"] if "mvn" in attempt else "n/a",
-      attempt["gradle"] if "gradle" in attempt else "n/a",
-      attempt["gradlew"] if "gradlew" in attempt else "n/a",
-    ])
+  timestamp = datetime.now().strftime("%Y-%m-%d-%H:%M:%S")
+  
+  rows.append([
+    timestamp,
+    project_slug,
+    "success" if result else "failure",
+    attempt["jdk"],
+    attempt["mvn"] if "mvn" in attempt else "n/a",
+    attempt["gradle"] if "gradle" in attempt else "n/a",
+    attempt["gradlew"] if "gradlew" in attempt else "n/a",
+  ])
 
   writer = csv.writer(open(build_result_dir, "w"))
-  writer.writerow(["project_slug", "status", "jdk_version", "mvn_version", "gradle_version", "use_gradlew"])
+  writer.writerow(["timestamp", "project_slug", "status", "jdk_version", "mvn_version", "gradle_version", "use_gradlew"])
   writer.writerows(rows)
 
-def build_one_project(project_slug):
+def get_build_info_from_csv(project_slug, csv_path):
+  if not os.path.exists(csv_path):
+    return None
+    
+  print(f">> [build_one] Checking build info from {csv_path}")
+  try:
+    with open(csv_path) as f:
+      reader = csv.DictReader(f)
+      for row in reader:
+        if row['project_slug'] == project_slug and row['status'] == 'success':
+          specific_attempt = {}
+          if row['jdk_version'] != 'n/a':
+            specific_attempt['jdk'] = row['jdk_version']
+          if row['mvn_version'] != 'n/a':
+            specific_attempt['mvn'] = row['mvn_version']
+          if row['gradle_version'] != 'n/a':
+            specific_attempt['gradle'] = row['gradle_version']
+          if row['use_gradlew'] != 'n/a':
+            specific_attempt['gradlew'] = int(row['use_gradlew'])
+
+          # Check if we have a JDK and a build tool configuration
+          if 'jdk' in specific_attempt and any(key in specific_attempt for key in ['mvn', 'gradle', 'gradlew']):
+            print(f">> [build_one] Found successful build configuration: {specific_attempt}")
+            return specific_attempt
+  except Exception as e:
+    print(f">> [build_one] Failed to read or use build info from CSV: {str(e)}")
+  
+  return None
+
+def try_build_with_attempt(project_slug, attempt, attempt_source=""):
+  """Try to build a project with a specific attempt configuration."""
+  if attempt_source:
+    print(f">> [build_one] Using {attempt_source} build configuration: {attempt}")
+  
+  result = build_one_project_with_attempt(project_slug, attempt)
+  if result == NEWLY_BUILT:
+    save_local_build_result(project_slug, True, attempt)
+    return True
+  elif result == ALREADY_BUILT:
+    return True
+  else:
+    save_local_build_result(project_slug, False, attempt)
+    return False
+
+def build_one_project(project_slug, try_all=False, custom_attempt=None):
+  # Handle custom attempt first
+  if custom_attempt:
+    if try_build_with_attempt(project_slug, custom_attempt, "custom"):
+      return
+    print(f">> [build_one] Custom build configuration failed for {project_slug}")
+    return
+
+  # Try known configurations unless try_all is True
+  if not try_all:
+    # Try local build info first
+    local_build_info = get_build_info_from_csv(project_slug, f"{DATA_DIR}/build-info/build_info_local.csv")
+    if local_build_info and try_build_with_attempt(project_slug, local_build_info, "local"):
+      return
+    
+    # Try global build info if local failed
+    global_build_info = get_build_info_from_csv(project_slug, f"{DATA_DIR}/build_info.csv")
+    if global_build_info and try_build_with_attempt(project_slug, global_build_info, "global"):
+      return
+
+  # Try all default attempts
+  print(">> [build_one] " + 
+        ("Skipping build info check and trying all version combinations..." if try_all else 
+         "No successful build configuration found in CSV files, trying all version combinations..."))
+
   for attempt in ATTEMPTS:
-      result = build_one_project_with_attempt(project_slug, attempt)
-      if result == NEWLY_BUILT:
-        save_build_result(project_slug, True, attempt)
-        return
-      elif result == ALREDY_BUILT:
-        return
-      save_build_result(project_slug, False, {"jdk": "n/a", "mvn": "n/a", "gradle": "n/a"})
+    if try_build_with_attempt(project_slug, attempt):
+      return
+
+def validate_and_create_custom_attempt(jdk, mvn, gradle, gradlew):
+  """Validate the provided versions against dep_configs.json and create a custom attempt."""
+  if not jdk:
+    print(">> [build_one] Error: JDK version must be specified when using custom versions")
+    sys.exit(1)
+  
+  # Validate JDK version
+  if jdk not in ALLVERSIONS["jdks"]:
+    available_jdks = list(ALLVERSIONS["jdks"].keys())
+    print(f">> [build_one] Error: JDK version '{jdk}' not found. Available JDK versions: {available_jdks}")
+    sys.exit(1)
+  
+  custom_attempt = {"jdk": jdk}
+  build_tool_count = 0
+  
+  # Validate and add Maven if specified
+  if mvn:
+    if mvn not in ALLVERSIONS["mvn"]:
+      available_mvn = list(ALLVERSIONS["mvn"].keys())
+      print(f">> [build_one] Error: Maven version '{mvn}' not found. Available Maven versions: {available_mvn}")
+      sys.exit(1)
+    custom_attempt["mvn"] = mvn
+    build_tool_count += 1
+  
+  # Validate and add Gradle if specified
+  if gradle:
+    if gradle not in ALLVERSIONS["gradle"]:
+      available_gradle = list(ALLVERSIONS["gradle"].keys())
+      print(f">> [build_one] Error: Gradle version '{gradle}' not found. Available Gradle versions: {available_gradle}")
+      sys.exit(1)
+    custom_attempt["gradle"] = gradle
+    build_tool_count += 1
+  
+  # Add gradlew if specified
+  if gradlew:
+    custom_attempt["gradlew"] = 1
+    build_tool_count += 1
+  
+  # Ensure exactly one build tool is specified
+  if build_tool_count == 0:
+    print(">> [build_one] Error: At least one build tool must be specified (--mvn, --gradle, or --gradlew)")
+    sys.exit(1)
+  elif build_tool_count > 1:
+    print(">> [build_one] Error: Only one build tool can be specified at a time (--mvn, --gradle, or --gradlew)")
+    sys.exit(1)
+  
+  return custom_attempt
 
 if __name__ == "__main__":
   parser = argparse.ArgumentParser()
   parser.add_argument("project_slug", type=str)
+  parser.add_argument("--try_all", action="store_true", help="Skip build info check and try all version combinations")
+  
+  # Custom version arguments
+  parser.add_argument("--jdk", type=str, help="Specific JDK version to use (e.g., '8', '11', '17')")
+  parser.add_argument("--mvn", type=str, help="Specific Maven version to use (e.g., '3.5.0', '3.9.8')")
+  parser.add_argument("--gradle", type=str, help="Specific Gradle version to use (e.g., '6.8.2', '7.6.4', '8.9')")
+  parser.add_argument("--gradlew", action="store_true", help="Use the project's gradlew script")
+  
   args = parser.parse_args()
-  build_one_project(args.project_slug)
+  
+  # Check if custom versions are specified
+  custom_attempt = None
+  if args.jdk or args.mvn or args.gradle or args.gradlew:
+    if args.try_all:
+      print(">> [build_one] Error: Cannot use --try_all with custom version arguments")
+      sys.exit(1)
+    custom_attempt = validate_and_create_custom_attempt(args.jdk, args.mvn, args.gradle, args.gradlew)
+  
+  build_one_project(args.project_slug, try_all=args.try_all, custom_attempt=custom_attempt)

@@ -10,25 +10,36 @@ sys.path.append(NEUROSYMSA_ROOT_DIR)
 from src.config import IRIS_ROOT_DIR, DATA_DIR
 
 def fetch_and_build_one(payload):
-  (project, no_build) = payload
+  (project, no_build, try_all, jdk, mvn, gradle, gradlew) = payload
   project_slug = project[1]
   print(f"== Processing {project_slug} ==")
   output = subprocess.run(["python3", f"{IRIS_ROOT_DIR}/scripts/fetch_one.py", project_slug])
   if output.returncode != 0:
     return
   if not no_build:
-    output = subprocess.run(["python3", f"{IRIS_ROOT_DIR}/scripts/build_one.py", project_slug])
+    build_cmd = ["python3", f"{IRIS_ROOT_DIR}/scripts/build_one.py", project_slug]
+    if try_all:
+      build_cmd.append("--try_all")
+    if jdk:
+      build_cmd.extend(["--jdk", jdk])
+    if mvn:
+      build_cmd.extend(["--mvn", mvn])
+    if gradle:
+      build_cmd.extend(["--gradle", gradle])
+    if gradlew:
+      build_cmd.append("--gradlew")
+    output = subprocess.run(build_cmd)
     if output.returncode != 0:
       return
     print(f"== Done fetching and building {project_slug} ==")
   else:
     print(f"== Done fetching {project_slug} ==")
 
-def parallel_fetch_and_build(projects, no_build):
+def parallel_fetch_and_build(projects, no_build, try_all, jdk, mvn, gradle, gradlew):
   results = []
   with ThreadPoolExecutor() as executor:
     # Submit the function to the executor for each struct
-    future_to_project = {executor.submit(fetch_and_build_one, (project, no_build)): project for project in projects}
+    future_to_project = {executor.submit(fetch_and_build_one, (project, no_build, try_all, jdk, mvn, gradle, gradlew)): project for project in projects}
 
     # Collect the results as they are completed
     for future in as_completed(future_to_project):
@@ -48,6 +59,12 @@ if __name__ == "__main__":
   parser.add_argument("--exclude", nargs="+", type=str)
   parser.add_argument("--cwe", nargs="+", type=str)
   parser.add_argument("--force", action="store_true")
+  parser.add_argument("--try_all", action="store_true")
+  # Add new build configuration arguments
+  parser.add_argument("--jdk", type=str, help="Specific JDK version to use (e.g., '8', '11', '17')")
+  parser.add_argument("--mvn", type=str, help="Specific Maven version to use (e.g., '3.5.0', '3.9.8')")
+  parser.add_argument("--gradle", type=str, help="Specific Gradle version to use (e.g., '6.8.2', '7.6.4', '8.9')")
+  parser.add_argument("--gradlew", action="store_true", help="Use the project's gradlew script")
   args = parser.parse_args()
 
   if not args.no_build:
@@ -78,4 +95,4 @@ if __name__ == "__main__":
       projects.append(project)
 
   # Perform fetch and build on the applied
-  parallel_fetch_and_build(projects, args.no_build)
+  parallel_fetch_and_build(projects, args.no_build, args.try_all, args.jdk, args.mvn, args.gradle, args.gradlew)
