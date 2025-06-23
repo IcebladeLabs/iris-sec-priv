@@ -9,6 +9,9 @@ outputs*
 output/
 
 **/__pycache__
+**/target
+**/deps
+**/build
 .vscode/settings.json
 codeql/
 data/build-info
