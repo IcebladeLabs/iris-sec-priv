@@ -141,6 +141,7 @@ Here are the following CWEs supported, that you can specify as an argument to `-
 - `cwe-022wLLM` - [CWE-022](https://cwe.mitre.org/data/definitions/22.html) (Path Traversal)
 - `cwe-078wLLM` - [CWE-078](https://cwe.mitre.org/data/definitions/78.html) (OS Command Injection)
 - `cwe-079wLLM` - [CWE-079](https://cwe.mitre.org/data/definitions/79.html) (Cross-Site Scripting)
+- `cwe-089wLLM` - [CWE-089](https://cwe.mitre.org/data/definitions/89.html) (SQL Injection)
 - `cwe-094wLLM` - [CWE-094](https://cwe.mitre.org/data/definitions/94.html) (Code Injection)
 
 ## Supported Models
