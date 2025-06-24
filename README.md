@@ -32,7 +32,8 @@ We have curated a dataset of Java projects, containing 120 real-world previously
 
 [CWE-Bench-Java on Hugging Face](https://huggingface.co/datasets/iris-sast/CWE-Bench-Java)
 
-## Results 
+## Results
+
 Results on the effectiveness of IRIS across 121 projects and 9 LLMs can be found at `/results`. Each model has a unique CSV file, with the following structure as an example.
 
 | CWE ID | CVE | Author | Package | Tag | Recall | Alerts | Paths | TP Alerts | TP Paths | Precision | F1 |
@@ -44,9 +45,75 @@ Results on the effectiveness of IRIS across 121 projects and 9 LLMs can be found
 ## Environment Setup
 
 We support multiple ways to run IRIS:
-- [Environment Setup for Linux](#environment-setup-for-linux)
 - [Environment Setup for Docker](#environment-setup-for-docker)
+- [Environment Setup for Mac](#environment-setup-for-mac)
+- [Environment Setup for Linux](#environment-setup-for-linux)
 - [Environment Setup for Other Systems](#environment-setup-for-other-systems)
+
+### Environment Setup for Docker
+All the dependencies for IRIS are included in the Dockerfile. You can run IRIS in a Docker container without needing to install anything on your host machine.
+
+All the jdk/mvn/gradle dependencies are now in `dep_configs.json`. You can modify this file to specify the paths to the JDKs, Maven, and Gradle versions you want to use.
+
+```bash 
+git clone git@github.com:iris-sast/iris-sec.git
+cd iris-sec
+docker build -f dockers/Dockerfile --platform linux/x86_64 -t iris:latest .
+docker run --platform=linux/amd64 -it iris:latest
+python scripts/setup.py --filter perwendel__spark_CVE-2018-9159_2.7.1
+python scripts/build_codeql_dbs.py --project perwendel__spark_CVE-2018-9159_2.7.1
+GOOGLE_API_KEY=<your_google_api_key> python src/neusym_vul.py --query cwe-022wLLM --run-id test --llm gemini-1.5-flash  perwendel__spark_CVE-2018-9159_2.7.1
+```
+
+These steps should produce results in the `output` directory. You should see a `cwe-022wLLM-final` directory with `results.json` containing the statistics of the run.
+
+Running with GPUs:
+```bash
+docker run --platform=linux/amd64 --gpus all -it iris:latest
+```
+or
+```bash
+docker run --gpus '"device=0,1"' -it iris:latest
+```
+
+### Environment Setup for Mac
+
+#### Step 1: Setup Conda environment
+
+```sh
+conda env create -f environment.yml
+conda activate iris
+```
+
+#### Step 2: Configure Java build tools
+
+To apply IRIS to Java projects, you need to specify the paths to your Java build tools (JDK, Maven, Gradle) in the `dep_configs.json` file in the project root.
+
+The versions of these tools required by each project are specified in `data/build_info.csv`. For instance, `perwendel__spark_CVE-2018-9159_2.7.1` requires JDK 8 and Maven 3.5.0. You can install and manage these tools easily using [SDKMAN!](https://sdkman.io/).
+
+#### Step 3: Configure CodeQL
+
+IRIS relies on the CodeQL Action bundle, which includes CLI utilities and pre-defined queries for various CWEs and languages ("QL packs").
+
+If you already have CodeQL installed, specify its location via the `CODEQL_DIR` environment variable in `src/config.py`. Otherwise, download an appropriate version of the CodeQL Action bundle from the [GitHub CodeQL Action releases page](https://github.com/github/codeql-action/releases).
+
+- **For the latest version:**
+  Visit the [latest release](https://github.com/github/codeql-action/releases/latest) and download the appropriate `codeql-bundle-osx64.tar.gz` for macOS.
+
+- **For a specific version (e.g., 2.15.0):**
+  Go to the [CodeQL Action releases page](https://github.com/github/codeql-action/releases), find the release tagged `codeql-bundle-v2.15.0`, and download the `codeql-bundle-osx64.tar.gz` file.
+
+After downloading, extract the archive in the project root directory:
+
+```sh
+tar -xzf codeql-bundle-osx64.tar.gz
+```
+
+This should create a sub-directory `codeql/` with the executable `codeql` inside.
+
+Lastly, add the path of this executable to your `PATH` environment variable.
+
+**Note:** Also adjust the environment variable `CODEQL_QUERY_VERSION` in `src/config.py` according to the instructions therein. For instance, for CodeQL v2.15.0, this should be `0.8.0`.
 
 ### Environment Setup for Linux
 First, clone the repository. We have included `cwe-bench-java` as a submodule, so use the following command to clone correctly:
@@ -139,32 +206,6 @@ Then update `CODEQL_DIR` in `src/config.py`.
 By running the provided scripts, you won't have to modify `src/config.py`. You can update `dep_configs.json` to specify the paths to the JDKs, Maven, and Gradle versions you want to use. Double check that the paths in the configuration are correct. Each path variable has a comment explaining its purpose.
 
 </details>
-
-### Environment Setup for Docker 
-All the dependencies for IRIS are included in the Dockerfile. You can run IRIS in a Docker container without needing to install anything on your host machine.
-
-All the jdk/mvn/gradle dependencies are now in `dep_configs.json`. You can modify this file to specify the paths to the JDKs, Maven, and Gradle versions you want to use.
-
-```bash 
-git clone git@github.com:iris-sast/iris-sec.git
-cd iris-sec
-docker build -f dockers/Dockerfile --platform linux/x86_64 -t iris:latest .
-docker run --platform=linux/amd64 -it iris:latest
-python3 scripts/setup.py --filter perwendel__spark_CVE-2018-9159_2.7.1
-python3 scripts/build_codeql_dbs.py --project perwendel__spark_CVE-2018-9159_2.7.1
-GOOGLE_API_KEY=<your_google_api_key> python3 src/neusym_vul.py --query cwe-022wLLM --run-id test --llm gemini-1.5-flash  perwendel__spark_CVE-2018-9159_2.7.1
-```
-
-These steps should produce results in the `output` directory. You should see a `cwe-022wLLM-final` directory with `results.json` containing the statistics of the run.
-
-Running with GPUs:
-```bash
-docker run --platform=linux/amd64 --gpus all -it iris:latest
-```
-or
-```bash
-docker run --gpus '"device=0,1"' -it iris:latest
-```
 
 ### Environment Setup for Other Systems
 
