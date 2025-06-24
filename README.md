@@ -48,12 +48,12 @@ You can set up IRIS either 1) using Docker on any system or 2) step-by-step on y
 
 ### Using Docker (Recommended)
 
-The easiest way to set up IRIS is using Docker which provides a pre-configured environment with all dependencies included.
-
 ```bash
 docker build -f Dockerfile --platform linux/x86_64 -t iris:latest .
 docker run --platform=linux/amd64 -it iris:latest
 ```
+
+Note: Read the instructions for "Native Setup" below if you intend to configure Java build tools (JDK, Maven, Gradle) or CodeQL.
 
 ### Native Setup (Mac/Linux)
 
@@ -74,11 +74,6 @@ The versions of these tools required by each project are specified in `data/buil
 # Install SDKMAN!
 curl -s "https://get.sdkman.io" | bash
 source "$HOME/.sdkman/bin/sdkman-init.sh"
-
-# Install Java 8 and Maven 3.5.0
-sdk install java 8.0.452-amzn
-sdk install maven 3.5.0
-```
 
 # Install Java 8 and Maven 3.5.0
 sdk install java 8.0.452-amzn
@@ -132,10 +127,10 @@ python scripts/build_codeql_dbs.py --project perwendel__spark_CVE-2018-9159_2.7.
 python src/neusym_vul.py --query cwe-022wLLM --run-id <SOME_ID> --llm qwen2.5-coder-7b perwendel__spark_CVE-2018-9159_2.7.1
 ```
 
-This will build the project, generate the CodeQL database, and analyze it for CWE-022 vulnerabilities using the specified LLM.
+This will build the project, generate the CodeQL database, and analyze it for CWE-022 vulnerabilities using the specified LLM (qwen2.5-coder-7b). The output of these three steps will be stored under data/build-info/, data/codeql-dbs/, and output/ respectively.
 
 ## Supported CWEs
-Here are the following CWEs supported, that you can specify as an argument to `--query` when using `src/neusym_vul.py` and `src/neusym_vul_for_query.py`. 
+Here are the following CWEs supported, that you can specify as an argument to `--query` when using `src/neusym_vul.py`. 
 
 - `cwe-022wLLM` - [CWE-022](https://cwe.mitre.org/data/definitions/22.html) (Path Traversal)
 - `cwe-078wLLM` - [CWE-078](https://cwe.mitre.org/data/definitions/78.html) (OS Command Injection)
