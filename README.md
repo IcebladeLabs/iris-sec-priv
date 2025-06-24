@@ -64,6 +64,12 @@ conda env create -f environment.yml
 conda activate iris
 ```
 
+If you have a CUDA-capable GPU and want to enable hardware acceleration, install the appropriate CUDA toolkit, for example:
+```bash
+$ conda install pytorch-cuda=12.1 -c nvidia -c pytorch
+```
+Replace 12.1 with the CUDA version compatible with your GPU and drivers, if needed.
+
 #### Step 2: Configure Java build tools
 
 To apply IRIS to Java projects, you need to specify the paths to your Java build tools (JDK, Maven, Gradle) in the `dep_configs.json` file in the project root.
@@ -127,7 +133,7 @@ python scripts/build_codeql_dbs.py --project perwendel__spark_CVE-2018-9159_2.7.
 python src/neusym_vul.py --query cwe-022wLLM --run-id <SOME_ID> --llm qwen2.5-coder-7b perwendel__spark_CVE-2018-9159_2.7.1
 ```
 
-This will build the project, generate the CodeQL database, and analyze it for CWE-022 vulnerabilities using the specified LLM (qwen2.5-coder-7b). The output of these three steps will be stored under data/build-info/, data/codeql-dbs/, and output/ respectively.
+This will build the project, generate the CodeQL database, and analyze it for CWE-022 vulnerabilities using the specified LLM (qwen2.5-coder-7b). The output of these three steps will be stored under `data/build-info/`, `data/codeql-dbs/`, and `output` respectively.
 
 ## Supported CWEs
 Here are the following CWEs supported, that you can specify as an argument to `--query` when using `src/neusym_vul.py`. 
@@ -138,7 +144,7 @@ Here are the following CWEs supported, that you can specify as an argument to `-
 - `cwe-094wLLM` - [CWE-094](https://cwe.mitre.org/data/definitions/94.html) (Code Injection)
 
 ## Supported Models
-We support the following models with our models API wrapper (found in `src/models`) in the project. Listed below are the arguments you can use for `--llm` when using `src/neusym_vul.py` and `src/neusym_vul_for_query.py`. You're free to use your own way of instantiating models or adding on to the existing library. Some of them require your own API key or license agreement on HuggingFace. 
+We support the following models with our models API wrapper (found in `src/models`) in the project. Listed below are the arguments you can use for `--llm` when using `src/neusym_vul.py`. You're free to use your own way of instantiating models or adding on to the existing library. Some of them require your own API key or license agreement on HuggingFace. 
 
 <details>
   <summary>List of Models</summary>
