@@ -87,8 +87,17 @@ RUN conda --version
 COPY . /iris/
 WORKDIR /iris
 
-RUN chmod +x scripts/setup_environment.sh && \
-    bash ./scripts/setup_environment.sh
+# Create conda environment
+RUN conda env remove -n iris || true && \
+    conda env create -f environment.yml
+
+# Download and extract CodeQL directly into /iris/
+RUN curl -L -o codeql.zip https://github.com/iris-sast/iris/releases/download/codeql-0.8.3-patched/codeql.zip && \
+    unzip -qo codeql.zip -d /iris/ && \
+    rm -f codeql.zip
+
+# Add CodeQL to PATH
+ENV PATH="/iris/codeql:${PATH}"
 
 # Set up conda environment activation
 SHELL ["/bin/bash", "-c"]
