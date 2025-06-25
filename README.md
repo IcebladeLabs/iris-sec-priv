@@ -32,7 +32,8 @@ We have curated a dataset of Java projects, containing 120 real-world previously
 
 [CWE-Bench-Java on Hugging Face](https://huggingface.co/datasets/iris-sast/CWE-Bench-Java)
 
-## Results 
+## Results
+
 Results on the effectiveness of IRIS across 121 projects and 9 LLMs can be found at `/results`. Each model has a unique CSV file, with the following structure as an example.
 
 | CWE ID | CVE | Author | Package | Tag | Recall | Alerts | Paths | TP Alerts | TP Paths | Precision | F1 |
@@ -43,30 +44,25 @@ Results on the effectiveness of IRIS across 121 projects and 9 LLMs can be found
 
 ## Environment Setup
 
-We support multiple ways to run IRIS:
-- [Environment Setup for Linux](#environment-setup-for-linux)
-- [Environment Setup for Docker](#environment-setup-for-docker)
-- [Environment Setup for Other Systems](#environment-setup-for-other-systems)
+You can set up IRIS either 1) using Docker on any system or 2) step-by-step on your own for Mac or Linux.
 
-### Environment Setup for Linux
-First, clone the repository. We have included `cwe-bench-java` as a submodule, so use the following command to clone correctly:
+### Using Docker (Recommended)
+
 ```bash
-$ git clone https://github.com/iris-sast/iris --recursive
+docker build -f Dockerfile --platform linux/x86_64 -t iris:latest .
+docker run --platform=linux/amd64 -it iris:latest
 ```
-<details>
-<summary>Installation Steps</summary>
-  
-#### Step 1. Conda environment  
-Run `scripts/setup_environment.sh`. 
-```bash
-$ chmod +x scripts/setup_environment.sh
-$ bash ./scripts/setup_environment.sh
-$ source ~/.bashrc # make sure to source .bashrc for PATH update
+
+Note: Read the instructions for "Native Setup" below if you intend to configure Java build tools (JDK, Maven, Gradle) or CodeQL.
+
+### Native Setup (Mac/Linux)
+
+#### Step 1: Setup Conda environment
+
+```sh
+conda env create -f environment.yml
+conda activate iris
 ```
-This will do the following:
-- creates a conda environment specified by environment.yml
-- installs our [patched version of CodeQL 2.15.3](https://github.com/iris-sast/iris/releases/tag/codeql-0.8.3-patched). This version of CodeQL **is necessary** for IRIS. To prevent confusion in case users already have an existing CodeQL version, we unzip this within the root of the iris directory. Then we add a PATH entry to the path of the patched CodeQL's binary.
-- creates a directory to store CodeQL databases.
 
 If you have a CUDA-capable GPU and want to enable hardware acceleration, install the appropriate CUDA toolkit, for example:
 ```bash
@@ -74,220 +70,82 @@ $ conda install pytorch-cuda=12.1 -c nvidia -c pytorch
 ```
 Replace 12.1 with the CUDA version compatible with your GPU and drivers, if needed.
 
-#### Get the JDKs needed 
+#### Step 2: Configure Java build tools
 
-We have also provided scripts to fetch and build Java projects to be used with IRIS. 
+To apply IRIS to Java projects, you need to specify the paths to your Java build tools (JDK, Maven, Gradle) in the `dep_configs.json` file in the project root.
 
-For building, we need Java distributions as well as Maven and Gradle for package management. In case you have a different system than Linux x64, please modify `dep_configs.json`
- to specify the corresponding JDK/MVN/Gradle paths. Download from the following URLs:
+The versions of these tools required by each project are specified in `data/build_info.csv`. For instance, `perwendel__spark_CVE-2018-9159_2.7.1` requires JDK 8 and Maven 3.5.0. You can install and manage these tools easily using [SDKMAN!](https://sdkman.io/).
 
-JDK 7u80: https://www.oracle.com/java/technologies/javase/javase7-archive-downloads.html
+```sh
+# Install SDKMAN!
+curl -s "https://get.sdkman.io" | bash
+source "$HOME/.sdkman/bin/sdkman-init.sh"
 
-JDK 8u202: https://www.oracle.com/java/technologies/javase/javase8-archive-downloads.html
-
-JDK 17: https://www.oracle.com/java/technologies/javase/jdk17-archive-downloads.html
-
-At this point, your `java-env` directory should look like 
-```
-- data/cwe-bench-java/java-env/
-  - jdk-7u80-linux-x64.tar.gz
-  - jdk-8u202-linux-x64.tar.gz
-  - jdk-17_linux-x64_bin.tar.gz
+# Install Java 8 and Maven 3.5.0
+sdk install java 8.0.452-amzn
+sdk install maven 3.5.0
 ```
 
-After this proceed to step 2 on fetching and building Java projects.
+#### Step 3: Configure CodeQL
 
-#### Step 2. Fetch and build Java projects
-Now run the fetch and build script. You can also choose to fetch and not build, or specify a set of projects. You can find project names in the project_slug column in `cwe-bench-java/data/build_info.csv`.
-```bash
-# fetch projects and build them
-$ python3 data/cwe-bench-java/scripts/setup.py
+IRIS relies on the CodeQL Action bundle, which includes CLI utilities and pre-defined queries for various CWEs and languages ("QL packs").
 
-# fetch projects and don't build them
-$ python3 data/cwe-bench-java/scripts/setup.py --no-build
+If you already have CodeQL installed, specify its location via the `CODEQL_DIR` environment variable in `src/config.py`. Otherwise, download an appropriate version of the CodeQL Action bundle from the [GitHub CodeQL Action releases page](https://github.com/github/codeql-action/releases).
 
-# example - build the perwendel__spark_CVE-2018-9159_2.7.1 project 
-$ python3 data/cwe-bench-java/scripts/setup.py --filter perwendel__spark_CVE-2018-9159_2.7.1
+- **For the latest version:**
+  Visit the [latest release](https://github.com/github/codeql-action/releases/latest) and download the appropriate bundle for your OS:
+  - `codeql-bundle-osx64.tar.gz` for macOS
+  - `codeql-bundle-linux64.tar.gz` for Linux
 
-# example - only build projects under CWE-022 and CWE-078
-$ python3 data/cwe-bench-java/scripts/setup.py --cwe CWE-022 CWE-078 
+- **For a specific version (e.g., 2.15.0):**
+  Go to the [CodeQL Action releases page](https://github.com/github/codeql-action/releases), find the release tagged `codeql-bundle-v2.15.0`, and download the appropriate bundle for your platform.
 
-# example - only build keycloak projects 
-$ python3 data/cwe-bench-java/scripts/setup.py --filter keycloak 
+After downloading, extract the archive in the project root directory:
 
-# example - do not build any apache related projects
-$ python3 data/cwe-bench-java/scripts/setup.py --exclude apache       
-```
-This will create the `build-info` and `project-sources` directories. It will also install JDK, Maven, and Gradle versions used to build the projects in `cwe-bench-java`. `build-info` is used to store build information and `project-sources` is where the fetched projects are stored.
-
-#### Step 3. Generate CodeQL databases
-To use CodeQL, you will need to generate a CodeQL database for each project. We have provided a script to automate this. The script will generate databases for all projects found in `data/cwe-bench-java/project-sources`. To generate a database for a specific project, use the `--project` argument. 
-```bash
-# build CodeQL databases for all projects in project-sources
-$ python3 scripts/build_codeql_dbs.py 
-
-# build a specific CodeQL database given the project slug
-$ python3 scripts/build_codeql_dbs.py --project perwendel__spark_CVE-2018-9159_2.7.1 
-```
-Note - if the script fails due to trying to locate CodeQL, run the following to find the path:
-```bash
-$ which codeql
-```
-Then update `CODEQL_DIR` in `src/config.py`. 
-
-#### Step 4. Check IRIS directory configuration in `src/config.py` and dependency configurations in `dep_configs.json`
-By running the provided scripts, you won't have to modify `src/config.py`. You can update `dep_configs.json` to specify the paths to the JDKs, Maven, and Gradle versions you want to use. Double check that the paths in the configuration are correct. Each path variable has a comment explaining its purpose.
-
-</details>
-
-### Environment Setup for Docker 
-All the dependencies for IRIS are included in the Dockerfile. You can run IRIS in a Docker container without needing to install anything on your host machine.
-
-All the jdk/mvn/gradle dependencies are now in `dep_configs.json`. You can modify this file to specify the paths to the JDKs, Maven, and Gradle versions you want to use.
-
-```bash 
-git clone git@github.com:iris-sast/iris-sec.git
-cd iris-sec
-docker build -f dockers/Dockerfile --platform linux/x86_64 -t iris:latest .
-docker run --platform=linux/amd64 -it iris:latest
-python3 scripts/setup.py --filter perwendel__spark_CVE-2018-9159_2.7.1
-python3 scripts/build_codeql_dbs.py --project perwendel__spark_CVE-2018-9159_2.7.1
-GOOGLE_API_KEY=<your_google_api_key> python3 src/neusym_vul.py --query cwe-022wLLM --run-id test --llm gemini-1.5-flash  perwendel__spark_CVE-2018-9159_2.7.1
+```sh
+tar -xzf codeql-bundle-<platform>.tar.gz
 ```
 
-These steps should produce results in the `output` directory. You should see a `cwe-022wLLM-final` directory with `results.json` containing the statistics of the run.
+This should create a sub-directory `codeql/` with the executable `codeql` inside.
 
-Running with GPUs:
-```bash
-docker run --platform=linux/amd64 --gpus all -it iris:latest
-```
-or
-```bash
-docker run --gpus '"device=0,1"' -it iris:latest
+Lastly, add the path of this executable to your `PATH` environment variable:
+
+```sh
+export PATH="$PWD/codeql:$PATH"
 ```
 
-### Environment Setup for Other Systems
-
-**Mac**: If you have a Mac, you can also run IRIS. You must separately install java libraries using the dmg files provided by oracle (using the same links mentioned [here](#get-the-jdks-needed)). Please specify the appropriate Java directories in `data/cwe-bench-java/scripts/jdk_version.json`. Alternatively, you can use the provided dockerfile for setup.
-
-**Windows**: We have not evaluated IRIS on windows machines. If you are interested in extending IRIS's support to windows machines, please feel free to raise a PR.
+**Note:** Also adjust the environment variable `CODEQL_QUERY_VERSION` in `src/config.py` according to the instructions therein. For instance, for CodeQL v2.15.0, this should be `0.8.0`.
 
 ## Quickstart
-Make sure you have followed all of the environment setup instructions before proceeding! 
 
-`src/neusym_vul.py` is used to analyze one specific project. `src/neusym_vul_for_query.py` is used to analyze multiple projects. Results are written to the `output` directory.
+Make sure you have followed all of the environment setup instructions before proceeding!
 
-See the [Supported CWEs](#supported-cwes) section for `--query` arguments and the [Supported Models](#supported-models) section for `--llm` arguments.
+To quickly try IRIS on the example project `perwendel__spark_CVE-2018-9159_2.7.1`, run the following commands:
 
-The following is an example of using IRIS to analyze perwendel__spark_CVE-2018-9159_2.7.1 for vulnerabilities that fall under CWE-022, using qwen2.5-coder-7b. Query `cwe-022wLLM` refers to [cwe-22 path traversal](https://cwe.mitre.org/data/definitions/22.html). You should be able to immediately execute this command to see an example of an evaluation.  
+```sh
+# Build the project
+python scripts/setup.py --filter perwendel__spark_CVE-2018-9159_2.7.1
 
-```bash
-$ python3 src/neusym_vul.py --query cwe-022wLLM --run-id <SOME_ID> --llm qwen2.5-coder-7b perwendel__spark_CVE-2018-9159_2.7.1
+# Generate the CodeQL database
+python scripts/build_codeql_dbs.py --project perwendel__spark_CVE-2018-9159_2.7.1
+
+# Run IRIS analysis
+python src/neusym_vul.py --query cwe-022wLLM --run-id <SOME_ID> --llm qwen2.5-coder-7b perwendel__spark_CVE-2018-9159_2.7.1
 ```
 
-The following is an example of using IRIS to analyze zerotunaround for vulnerabilities that fall under CWE-022, using GPT-4. Query `cwe-022wLLM` refers to [cwe-22 path traversal](https://cwe.mitre.org/data/definitions/22.html). 
-```bash
-$ python3 src/neusym_vul.py --query cwe-022wLLM --run-id <SOME_ID> --llm gpt-4 zeroturnaround__zt-zip_CVE-2018-1002201_1.12
-```
-
-### Outputs
-
-After the steps above, IRIS will generate `results.sarif` and `results_pp.sarif` files in `output/[project-name]/cwe-XXwLLM` containing the vulnerabilities found in the project before and after posthoc filtering. You can download [Sarif Viewer](https://marketplace.visualstudio.com/items?itemName=MS-SarifVSCode.sarif-viewer) to view the sarif files. Additionally, `results.csv` contains the vulnerabilities in a simplified form.
-
-<details>
-  <summary>Example Output directory structure (using run-id test1): </summary>
-  
-```
-output
-├── common
-│   └── test1
-│       └── cwe-022 (cache of common specs, can be reused across projects)
-└── perwendel__spark_CVE-2018-9159_2.7.1
-    └── test1
-        ├── common
-        │   ├── func_params.csv (list of all function parameters in the project)
-        │   ├── llm_labelled_source_func_params.json (function parameters labelled as sources by LLM)
-        │   ├── logs (Log files and raw LLM outputs)
-        │   │   └── label_func_params
-        │   │       ├── raw_llm_response_0.txt
-        │   │       ├── raw_llm_response_20.txt
-        │   │       ...
-        │   └── source_func_param_candidates.csv
-        ├── cwe-022 
-        │   ├── MySinks.qll (Codeql file listing all sink specifications returned by LLM)
-        │   ├── MySources.qll (Codeql file listing all source specifications returned by LLM)
-        │   ├── MySummaries.qll (Codeql file listing all summary specifications returned by LLM)
-        │   ├── Spec.yml (Alternate yml file listing all the specs)
-        │   ├── candidate_apis.csv (candidate specs)
-        │   ├── external_apis.csv 
-        │   ├── llm_labelled_sink_apis.json (sinks labelled by LLM)
-        │   ├── llm_labelled_source_apis.json (sources labelled by LLM)
-        │   ├── llm_labelled_taint_prop_apis.json (taint propagators labelled by LLM)
-        │   └── logs (intermediate logs)
-        │       └── label_apis
-        │           ├── raw_llm_response_0.txt
-        │           ├── ...
-        │           ├── raw_user_prompt_0.txt
-        │           ├── ...
-        ├── cwe-022wLLM (final results with all the vulnerabilities)
-        │   ├── results.csv
-        │   ├── results.sarif (before contextual filtering)
-        │   └── results_pp.sarif (after contextual filtering)
-        ├── cwe-022wLLM-final
-        │   └── results.json (results statistics)
-        ├── cwe-022wLLM-posthoc-filter (results of contextual filtering)
-        │   ├── logs
-        │   │   ├── raw_llm_response_0_0.txt
-        │   │   ├── raw_llm_response_0_1.txt
-        │   │   ├── ...
-        │   ├── results.json
-        │   ├── results.sarif
-        │   └── stats.json
-        ├── fetch_* (intermediate analysis results)
-        │   ├── ...
-        └── log (Main log files)
-            ├── ...       
-```
-
-</details>
-
-### Running IRIS on a new Java project
-
-The easiest way to run IRIS on a Java project not in CWE-Bench-Java is to make the following changes:
-
-1. Add the project info to `data/project_info.csv`. For instance, to run the latest perwendel/spark version:
-
-```
-ID,perwendel__spark_latest,,,,,perwendel,spark,latest,,,,
-```
-
-The only required fields are: project slug (use a unique name), github username, and github tag if any.
-
-2. Clone the project to `data/cwe-bench-java/project-sources`. Use the same folder name as the slug used above.
-3. Add build info to `data/cwe-bench-java/data/build_info.csv`. For instance, you can add: `perwendel__spark_latest,success,8u202,3.5.0,n/a,n/a` to use java 8 and mvn 3.5.0. Please use appropriate java/mvn/gradle versions as needed.
-4. Build the Java project.
-```bash
-$ python3 data/cwe-bench-java/scripts/setup.py --filter [project slug]
-```
-5. Generate the CodeQL database.
-```bash
-$ python3 scripts/build_codeql_dbs.py --project [project slug]
-```
-6. Provide a list of internal packages in `data/cwe-bench-java/package-names/[project slug].txt`. This should contain the package names of all internal packages of the project. E.g., `spark` for `perwendel/spark`. The following command uses CodeQL to extract the internal packages and writes them to the required txt file in the `package-names` directory. We provided a script to automate this. 
-```bash
-$ python scripts/get_packages_codeql.py [project slug]
-```
+This will build the project, generate the CodeQL database, and analyze it for CWE-022 vulnerabilities using the specified LLM (qwen2.5-coder-7b). The output of these three steps will be stored under `data/build-info/`, `data/codeql-dbs/`, and `output` respectively.
 
 ## Supported CWEs
-Here are the following CWEs supported, that you can specify as an argument to `--query` when using `src/neusym_vul.py` and `src/neusym_vul_for_query.py`. 
+Here are the following CWEs supported, that you can specify as an argument to `--query` when using `src/neusym_vul.py`. 
 
 - `cwe-022wLLM` - [CWE-022](https://cwe.mitre.org/data/definitions/22.html) (Path Traversal)
 - `cwe-078wLLM` - [CWE-078](https://cwe.mitre.org/data/definitions/78.html) (OS Command Injection)
 - `cwe-079wLLM` - [CWE-079](https://cwe.mitre.org/data/definitions/79.html) (Cross-Site Scripting)
+- `cwe-089wLLM` - [CWE-089](https://cwe.mitre.org/data/definitions/89.html) (SQL Injection)
 - `cwe-094wLLM` - [CWE-094](https://cwe.mitre.org/data/definitions/94.html) (Code Injection)
 
 ## Supported Models
-We support the following models with our models API wrapper (found in `src/models`) in the project. Listed below are the arguments you can use for `--llm` when using `src/neusym_vul.py` and `src/neusym_vul_for_query.py`. You're free to use your own way of instantiating models or adding on to the existing library. Some of them require your own API key or license agreement on HuggingFace. 
+We support the following models with our models API wrapper (found in `src/models`) in the project. Listed below are the arguments you can use for `--llm` when using `src/neusym_vul.py`. You're free to use your own way of instantiating models or adding on to the existing library. Some of them require your own API key or license agreement on HuggingFace. 
 
 <details>
   <summary>List of Models</summary>
