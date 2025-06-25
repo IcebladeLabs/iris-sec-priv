@@ -90,7 +90,7 @@ sdk install maven 3.5.0
 
 IRIS relies on the CodeQL Action bundle, which includes CLI utilities and pre-defined queries for various CWEs and languages ("QL packs").
 
-If you already have CodeQL installed, specify its location via the `CODEQL_DIR` environment variable in `src/config.py`. Otherwise, download an appropriate version of the CodeQL Action bundle from the [GitHub CodeQL Action releases page](https://github.com/github/codeql-action/releases).
+If you already have CodeQL installed, specify its location via the `CODEQL_DIR` environment variable in `src/config.py`. Otherwise, download an appropriate version of the CodeQL Action bundle from the [CodeQL Action releases page](https://github.com/github/codeql-action/releases).
 
 - **For the latest version:**
   Visit the [latest release](https://github.com/github/codeql-action/releases/latest) and download the appropriate bundle for your OS:
@@ -130,10 +130,10 @@ python scripts/setup.py --filter perwendel__spark_CVE-2018-9159_2.7.1
 python scripts/build_codeql_dbs.py --project perwendel__spark_CVE-2018-9159_2.7.1
 
 # Run IRIS analysis
-python src/neusym_vul.py --query cwe-022wLLM --run-id <SOME_ID> --llm qwen2.5-coder-7b perwendel__spark_CVE-2018-9159_2.7.1
+python src/neusym_vul.py --query cwe-022wLLM --run-id test --llm qwen2.5-coder-7b perwendel__spark_CVE-2018-9159_2.7.1
 ```
 
-This will build the project, generate the CodeQL database, and analyze it for CWE-022 vulnerabilities using the specified LLM (qwen2.5-coder-7b). The output of these three steps will be stored under `data/build-info/`, `data/codeql-dbs/`, and `output` respectively.
+This will build the project, generate the CodeQL database, and analyze it for CWE-022 vulnerabilities using the specified LLM (qwen2.5-coder-7b). The output of these three steps will be stored under `data/build-info/`, `data/codeql-dbs/`, and `output/` respectively.
 
 ## Supported CWEs
 Here are the following CWEs supported, that you can specify as an argument to `--query` when using `src/neusym_vul.py`. 
