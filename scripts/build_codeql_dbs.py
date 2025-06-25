@@ -13,15 +13,25 @@ ALLVERSIONS = json.load(open(DEP_CONFIGS))
 def setup_environment(row):
     env = os.environ.copy()
     
-    # Set Maven path if available
-    if row['mvn_version'] != 'n/a':
-        MAVEN_PATH = ALLVERSIONS['mvn'].get(row['mvn_version'], None)
-        env['PATH'] = f"{MAVEN_PATH}:{env.get('PATH', '')}"
-        print(f"Maven path set to: {MAVEN_PATH}")
+    # Set Maven path
+    mvn_version = row.get('mvn_version', 'n/a')
+    if mvn_version != 'n/a':
+        MAVEN_PATH = ALLVERSIONS['mvn'].get(mvn_version, None)
+        if MAVEN_PATH:
+            env['PATH'] = f"{os.path.join(MAVEN_PATH, 'bin')}:{env.get('PATH', '')}"
+            print(f"Maven path set to: {MAVEN_PATH}")
+
+    # Set Gradle path
+    gradle_version = row.get('gradle_version', 'n/a')
+    if gradle_version != 'n/a':
+        GRADLE_PATH = ALLVERSIONS['gradle'].get(gradle_version, None)
+        if GRADLE_PATH:
+            env['PATH'] = f"{os.path.join(GRADLE_PATH, 'bin')}:{env.get('PATH', '')}"
+            print(f"Gradle path set to: {GRADLE_PATH}")
 
     # Find and set Java home
     java_version = row['jdk_version']
-    java_home = ALLVERSIONS['jdks'].get(row['jdk_version'], None)
+    java_home = ALLVERSIONS['jdks'].get(java_version, None)
     if not java_home:
         raise Exception(f"Java version {java_version} not found in available installations.")
 
@@ -80,10 +90,9 @@ def main():
     parser.add_argument('--sources-path', help='Base path for project sources', default=PROJECT_SOURCE_CODE_DIR)
     args = parser.parse_args()
 
-    with open(BUILD_INFO, 'r') as f:
-        reader = csv.DictReader(f)
-        projects = list(reader)
-    
+    # Load build information
+    projects = load_build_info()
+
     if args.project:
         project = next((p for p in projects if p['project_slug'] == args.project), None)
         if project:
@@ -95,6 +104,34 @@ def main():
         for project in projects:
             env = setup_environment(project)
             create_codeql_database(project['project_slug'], env, args.db_path, args.sources_path)
+
+# Location of build_info_local.csv file
+LOCAL_BUILD_INFO = os.path.join(DATA_DIR, "build-info", "build_info_local.csv")
+
+def load_build_info():
+    """
+    Merge the local and global build information. Prioritize local build info.
+    """
+    build_info = {}
+
+    # Get the local build info
+    if os.path.exists(LOCAL_BUILD_INFO):
+        with open(LOCAL_BUILD_INFO, "r") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                if row.get("status", "success") == "success":
+                    build_info[row["project_slug"]] = row
+
+    # Add the global build info if there is not local information
+    with open(BUILD_INFO, "r") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            if row.get("status", "success") != "success":
+                continue
+            if row["project_slug"] not in build_info:
+                build_info[row["project_slug"]] = row
+
+    return list(build_info.values())
 
 if __name__ == "__main__":
     main()
