@@ -17,4 +17,4 @@ jobs:
         run: docker build -f Dockerfile --platform linux/x86_64 -t iris:latest .
 
       - name: Run Analysis within Docker Container
-        run: docker run --platform=linux/amd64 -it iris:latest
+        run: docker run --platform=linux/amd64 iris:latest
