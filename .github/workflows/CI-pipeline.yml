@@ -35,8 +35,12 @@ jobs:
         run: tar -xzf codeql-bundle.tar.gz
 
       - name: Export to PATH
-        run: export PATH="$PWD/codeql:$PATH"
-
+        run: |
+          export PATH="$PWD/codeql:$PATH"
+          echo "Updated PATH: $PATH"
+          codeql --version
+          ls
+          
       - name: Update CodeQL Query version in config
         run: sed -i "s/^CODEQL_QUERY_VERSION = \".*\"$/CODEQL_QUERY_VERSION = \"0.8.0\"/" src/config.py
 
