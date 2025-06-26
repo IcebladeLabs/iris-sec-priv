@@ -1,0 +1,20 @@
+name: iris-sec CI Pipeline
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-analyze:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Conda environment
+        run: conda env create -f environment.yml
+
+      - name: Activate conda environment
+        run: conda activate iris
