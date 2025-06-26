@@ -115,6 +115,20 @@ jobs:
       - name: Update CodeQL Query version in config
         run: sed -i "s/^CODEQL_QUERY_VERSION = \".*\"$/CODEQL_QUERY_VERSION = \"0.8.0\"/" src/config.py
 
+      - name: Verify CodeQL Executable Permissions
+        run: |
+          CODEQL_INSTALL_DIR="${{ env.CODEQL_PATH }}" # Use the env var we set
+          echo "Checking permissions for $CODEQL_INSTALL_DIR/codeql"
+          ls -l "$CODEQL_INSTALL_DIR/codeql"
+          # Expected output should show 'x' (execute) permissions, e.g., -rwxr-xr-x
+          if [ ! -x "$CODEQL_INSTALL_DIR/codeql" ]; then
+            echo "ERROR: CodeQL executable does not have execute permissions!"
+            echo "Attempting to add execute permissions..."
+            chmod +x "$CODEQL_INSTALL_DIR/codeql"
+            ls -l "$CODEQL_INSTALL_DIR/codeql" # Verify after chmod
+          fi
+          echo "------------------------------------------"
+          
       - name: Build perwendel-spark
         run: |
           echo "--- Building perwendel-spark ---"
