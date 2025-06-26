@@ -20,7 +20,6 @@ jobs:
           environment-file: environment.yml
           auto-activate-base: false
           activate-environment: iris
-          use-only-tar-bz2: true
           auto-update-conda: true
           
       - name: Set up Java 8 and Maven
