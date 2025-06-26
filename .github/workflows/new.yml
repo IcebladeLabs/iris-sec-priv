@@ -138,7 +138,6 @@ jobs:
 
       - name: Run IRIS
         run: |
-          conda activate iris
           echo "--- Running IRIS ---"
-          python src/neusym_vul.py --query cwe-022wLLM --run-id test --llm qwen2.5-coder-7b perwendel__spark_CVE-2018-9159_2.7.1
+          conda run -n iris python src/neusym_vul.py --query cwe-022wLLM --run-id test --llm qwen2.5-coder-7b perwendel__spark_CVE-2018-9159_2.7.1
           echo "--------------------"
