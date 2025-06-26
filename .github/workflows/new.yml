@@ -42,14 +42,29 @@ jobs:
           java-version: '8' # This will typically install 8.0.x
           cache: 'maven' # Caches Maven dependencies
 
-      - name: Set up Maven 3.5.0
-        uses: actions/setup-maven@v1 # Note: This action is older, but allows specific version
-        with:
-          maven-version: '3.5.0'
-          # If maven-version is not supported by setup-maven, you might need to install manually
-          # using curl and tar, then set M2_HOME yourself.
-          # If setup-maven@v1 doesn't work for 3.5.0, see Option B (Manual Install) below.
+      - name: Manually Install Maven 3.5.0
+        run: |
+          MAVEN_VERSION="3.5.0"
+          MAVEN_TAR="apache-maven-${MAVEN_VERSION}-bin.tar.gz"
+          MAVEN_URL="https://archive.apache.org/dist/maven/maven-3/${MAVEN_VERSION}/binaries/${MAVEN_TAR}"
+          MAVEN_INSTALL_DIR="/opt/maven/apache-maven-${MAVEN_VERSION}"
 
+          echo "Downloading Maven ${MAVEN_VERSION}..."
+          sudo curl -fSL "$MAVEN_URL" -o "/tmp/${MAVEN_TAR}" || { echo "Failed to download Maven!"; exit 1; }
+          
+          echo "Creating Maven install directory: ${MAVEN_INSTALL_DIR}"
+          sudo mkdir -p "${MAVEN_INSTALL_DIR}"
+          
+          echo "Extracting Maven to ${MAVEN_INSTALL_DIR}..."
+          sudo tar -xzf "/tmp/${MAVEN_TAR}" -C "/opt/maven/" || { echo "Failed to extract Maven!"; exit 1; }
+          
+          echo "Setting MAVEN_HOME and adding to PATH..."
+          # Set MAVEN_HOME for subsequent steps
+          echo "M2_HOME=${MAVEN_INSTALL_DIR}" >> $GITHUB_ENV
+          echo "${MAVEN_INSTALL_DIR}/bin" >> $GITHUB_PATH
+          
+          echo "Maven 3.5.0 installed to ${MAVEN_INSTALL_DIR}"
+          echo "------------------------------------------------"
 
       - name: Download and Extract CodeQL Bundle
         run: |
