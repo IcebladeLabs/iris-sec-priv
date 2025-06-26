@@ -27,6 +27,12 @@ jobs:
           source "$HOME/.sdkman/bin/sdkman-init.sh"
           sdk install java 8.0.452-amzn
           sdk install maven 3.5.0
+          # Following make sure all envs persist across steps
+          echo "JAVA_HOME=$(sdk home java)" >> $GITHUB_ENV
+          echo "M2_HOME=$(sdk home maven)" >> $GITHUB_ENV
+          echo "$(sdk home java)/bin" >> $GITHUB_PATH
+          echo "$(sdk home maven)/bin" >> $GITHUB_PATH
+          echo "$HOME/.sdkman/bin" >> $GITHUB_PATH
         
       - name: Download CodeQL Bundle
         run: curl -L https://github.com/github/codeql-action/releases/download/codeql-bundle-v2.15.0/codeql-bundle-linux64.tar.gz -o codeql-bundle.tar.gz
@@ -37,10 +43,9 @@ jobs:
       - name: Export to PATH
         run: |
           export PATH="$PWD/codeql:$PATH"
-          echo "Updated PATH: $PATH"
-          codeql --version
-          ls
-          
+          echo "CODEQL_PATH=$(pwd)/codeql" >> $GITHUB_ENV
+          echo "$(pwd)/codeql" >> $GITHUB_PATH
+
       - name: Update CodeQL Query version in config
         run: sed -i "s/^CODEQL_QUERY_VERSION = \".*\"$/CODEQL_QUERY_VERSION = \"0.8.0\"/" src/config.py
 
