@@ -29,7 +29,7 @@ jobs:
           sdk install maven 3.5.0
           # Following make sure all envs persist across steps
           echo "JAVA_HOME=$(sdk home java)" >> $GITHUB_ENV
-          echo "M2_HOME=$(sdk home maven)" >> $GITHUB_ENV
+          echo "MAVEN_HOME=$(sdk home maven)" >> $GITHUB_ENV
           echo "$(sdk home java)/bin" >> $GITHUB_PATH
           echo "$(sdk home maven)/bin" >> $GITHUB_PATH
           echo "$HOME/.sdkman/bin" >> $GITHUB_PATH
@@ -50,7 +50,10 @@ jobs:
         run: sed -i "s/^CODEQL_QUERY_VERSION = \".*\"$/CODEQL_QUERY_VERSION = \"0.8.0\"/" src/config.py
 
       - name: Build perwendel-spark
-        run: python scripts/setup.py --filter perwendel__spark_CVE-2018-9159_2.7.1
+        run: |
+          echo "JAVA_HOME is: $JAVA_HOME"
+          echo "MAVEN_HOME is: $MAVEN_HOME"
+          python scripts/setup.py --filter perwendel__spark_CVE-2018-9159_2.7.1
 
       - name: Generate CodeQL database
         run: python scripts/build_codeql_dbs.py --project perwendel__spark_CVE-2018-9159_2.7.1
