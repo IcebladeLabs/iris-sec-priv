@@ -1,0 +1,139 @@
+name: iris-sec CI Pipeline
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-analyze:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Miniconda
+        uses: conda-incubator/setup-miniconda@v3
+        with:
+          environment-file: environment.yml
+          auto-activate-base: false
+          activate-environment: iris
+          auto-update-conda: true
+          # --- FIX for PackagesNotFoundError ---
+          # 1. Update your environment.yml to specify a precise Python version.
+          #    Example (in environment.yml):
+          #    dependencies:
+          #      - python=3.9 # Or 3.10, 3.11 - choose a precise, common, and available version
+          #      - pip
+          #      # ... other dependencies
+          #    channels:
+          #      - conda-forge # IMPORTANT: Ensure this is present and high in the list
+          #      - defaults
+          # 2. If you cannot modify environment.yml easily, you can try passing it here:
+          # python-version: 3.9 # Uncomment and set a precise, common Python version
+          # channels: 'conda-forge,defaults' # Uncomment if not in env.yml or to prioritize
+          # ---------------------------------------------
+
+      - name: Set up Java 8 and Maven 3.5.0 using SDKMAN
+        run: |
+          # 1. Install SDKMAN (silently)
+          curl -s "https://get.sdkman.io" | bash
+
+          # 2. Source SDKMAN init script for THIS run block.
+          # We need to ensure the 'sdk' command is fully functional.
+          # The `sdkman-init.sh` script adds SDKMAN's own 'bin' directory to the PATH for the current shell.
+          source "$HOME/.sdkman/bin/sdkman-init.sh" || { echo "ERROR: Failed to source sdkman-init.sh"; exit 1; }
+
+          # 3. Install Java and Maven. Use '|| exit 1' to fail the step if installation fails.
+          sdk install java 8.0.452-amzn || { echo "ERROR: Failed to install Java"; exit 1; }
+          sdk install maven 3.5.0 || { echo "ERROR: Failed to install Maven"; exit 1; }
+
+          # 4. Capture installed paths and export to GITHUB_ENV for persistence across steps
+          # Verify that 'sdk home' commands return values before using them.
+          JAVA_HOME_PATH=$(sdk home java 8.0.452-amzn || true) # Specify version to 'sdk home' for robustness
+          MAVEN_HOME_PATH=$(sdk home maven 3.5.0 || true)       # Specify version to 'sdk home' for robustness
+
+          if [ -z "$JAVA_HOME_PATH" ]; then echo "ERROR: JAVA_HOME_PATH is empty after sdk home java"; exit 1; fi
+          if [ -z "$MAVEN_HOME_PATH" ]; then echo "ERROR: MAVEN_HOME_PATH is empty after sdk home maven"; exit 1; fi
+
+          echo "JAVA_HOME=$JAVA_HOME_PATH" >> $GITHUB_ENV
+          echo "M2_HOME=$MAVEN_HOME_PATH" >> $GITHUB_ENV
+
+          # 5. Add necessary 'bin' directories to GITHUB_PATH for command accessibility in subsequent steps
+          echo "$JAVA_HOME_PATH/bin" >> $GITHUB_PATH
+          echo "$MAVEN_HOME_PATH/bin" >> $GITHUB_PATH
+          echo "$HOME/.sdkman/bin" >> $GITHUB_PATH # For 'sdk' command itself
+
+          # Optional: VERIFY within this step (only for this step's shell)
+          echo "--- SDKMAN Setup Verification (within current step) ---"
+          echo "Internal JAVA_HOME (current shell): $JAVA_HOME" # Should reflect the value from 'sdk home java'
+          echo "Internal M2_HOME (current shell): $M2_HOME"   # Should reflect the value from 'sdk home maven'
+          java -version || echo "Java not found in current shell's PATH" # Test command
+          mvn -version  || echo "Maven not found in current shell's PATH" # Test command
+          echo "Internal PATH (current shell): $PATH"
+          echo "-----------------------------------------------------"
+        # Removed 'shell: bash -l {0}' due to your linter issue.
+        # This makes it less robust for SDKMAN's initialization, so we added more checks above.
+
+      - name: Download and Extract CodeQL Bundle
+        run: |
+          # Download the CodeQL bundle
+          curl -L https://github.com/github/codeql-action/releases/download/codeql-bundle-v2.15.0/codeql-bundle-linux64.tar.gz -o codeql-bundle.tar.gz || exit 1
+
+          # Extract the bundle (it usually extracts into a directory named 'codeql')
+          tar -xzf codeql-bundle.tar.gz || exit 1
+
+          # Store the absolute path to the extracted CodeQL directory in GITHUB_ENV.
+          echo "CODEQL_PATH=$(pwd)/codeql" >> $GITHUB_ENV
+
+          # Add the CodeQL executable's directory to the PATH for all subsequent steps.
+          echo "$(pwd)/codeql" >> $GITHUB_PATH
+
+          # Optional: VERIFY CodeQL bundle contents within THIS step (no 'codeql' command test here)
+          echo "--- CodeQL Bundle Preparation (within current step) ---"
+          ls -F # See the 'codeql/' directory
+          echo "PATH for this step (not yet updated by GITHUB_PATH for 'codeql' command): $PATH"
+          echo "-----------------------------------------------------"
+
+      - name: Verify Environment Persistence (Java, Maven, CodeQL)
+        # This NEW step will verify that the PATH and environment variables
+        # set in previous steps are now correctly persisted.
+        run: |
+          echo "--- Verifying Environment Persistence (New Step) ---"
+          echo "JAVA_HOME (persisted): $JAVA_HOME"
+          echo "MAVEN_HOME (persisted): $MAVEN_HOME"
+          echo "CODEQL_PATH (persisted): ${{ env.CODEQL_PATH }}"
+          echo "Full PATH (persisted): $PATH"
+
+          # Now, test the commands that rely on the persisted PATH. These should work.
+          java -version || { echo "ERROR: Java command not found or not working after persistence."; exit 1; }
+          mvn -version  || { echo "ERROR: Maven command not found or not working after persistence."; exit 1; }
+          codeql --version || { echo "ERROR: CodeQL command not found or not working after persistence."; exit 1; }
+          echo "----------------------------------------------------"
+
+      - name: Update CodeQL Query version in config
+        run: sed -i "s/^CODEQL_QUERY_VERSION = \".*\"$/CODEQL_QUERY_VERSION = \"0.8.0\"/" src/config.py
+
+      - name: Build perwendel-spark
+        run: |
+          echo "--- Building perwendel-spark ---"
+          # These echoes should now show values correctly persisted from SDKMAN step
+          echo "JAVA_HOME is: $JAVA_HOME"
+          echo "MAVEN_HOME is: $MAVEN_HOME"
+          python scripts/setup.py --filter perwendel__spark_CVE-2018-9159_2.7.1
+          echo "--------------------------------"
+
+      - name: Generate CodeQL database
+        run: |
+          echo "--- Generating CodeQL database ---"
+          # 'codeql' command should be found here due to the $GITHUB_PATH update
+          codeql --version # Re-verify codeql is found just before its use
+          python scripts/build_codeql_dbs.py --project perwendel__spark_CVE-2018-9159_2.7.1
+          echo "----------------------------------"
+
+      - name: Run IRIS
+        run: |
+          echo "--- Running IRIS ---"
+          python src/neusym_vul.py --query cwe-022wLLM --run-id test --llm qwen2.5-coder-7b perwendel__spark_CVE-2018-9159_2.7.1
+          echo "--------------------"
