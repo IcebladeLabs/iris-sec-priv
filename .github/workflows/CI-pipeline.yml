@@ -21,13 +21,16 @@ jobs:
           activate-environment: iris
           auto-update-conda: true
           
-      - name: Set up Java 8 and Maven
+      - name: Set up Java 8
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '8'
-          cache: 'maven'
-          maven-version: '3.5.0'
+
+      - name: Install Maven
+        uses: hb0730/maven-action@v1.0.2
+        with: 
+          maven-version: 3.5.0
 
       - name: Download CodeQL Bundle
         run: curl -L https://github.com/github/codeql-action/releases/download/codeql-bundle-v2.15.0/codeql-bundle-linux64.tar.gz -o codeql-bundle.tar.gz
@@ -39,7 +42,7 @@ jobs:
         run: export PATH="$PWD/codeql:$PATH"
 
       - name: Update CodeQL Query version in config
-        run: sed -i "s/^CODEQL_QUERY_VERSION = \".*\"$/CODEQL_QUERY_VERSION = \"0.8.0"/" src/config.py
+        run: sed -i "s/^CODEQL_QUERY_VERSION = \".*\"$/CODEQL_QUERY_VERSION = \"0.8.0\"/" src/config.py
 
       - name: Build perwendel-spark
         run: python scripts/setup.py --filter perwendel__spark_CVE-2018-9159_2.7.1
