@@ -42,9 +42,13 @@ jobs:
 
       - name: Export to PATH
         run: |
-          export PATH="$PWD/codeql:$PATH"
           echo "CODEQL_PATH=$(pwd)/codeql" >> $GITHUB_ENV
           echo "$(pwd)/codeql" >> $GITHUB_PATH
+          echo "--- CodeQL Setup Verification ---"
+          codeql --version # This should now work and confirm the version
+          ls -F # See the 'codeql/' directory
+          echo "PATH includes: $PATH" # Check if it's in the current step's PATH
+          echo "---------------------------------"
 
       - name: Update CodeQL Query version in config
         run: sed -i "s/^CODEQL_QUERY_VERSION = \".*\"$/CODEQL_QUERY_VERSION = \"0.8.0\"/" src/config.py
