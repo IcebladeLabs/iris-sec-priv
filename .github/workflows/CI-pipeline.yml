@@ -19,5 +19,8 @@ jobs:
       - name: Initialize Conda
         run: conda init
 
+      - name: Restart terminal
+        run: source ~/.bashrc
+
       - name: Activate conda environment
         run: conda activate iris
