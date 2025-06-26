@@ -35,8 +35,7 @@ jobs:
           echo "$JAVA_HOME_PATH/bin" >> $GITHUB_PATH
           echo "$MAVEN_HOME_PATH/bin" >> $GITHUB_PATH
           echo "$HOME/.sdkman/bin" >> $GITHUB_PATH # For 'sdk' command itself
-        shell: bash -l {0}
-        
+
       - name: Download CodeQL Bundle
         run: curl -L https://github.com/github/codeql-action/releases/download/codeql-bundle-v2.15.0/codeql-bundle-linux64.tar.gz -o codeql-bundle.tar.gz || exit 1
 
