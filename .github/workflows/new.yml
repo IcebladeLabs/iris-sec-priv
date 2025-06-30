@@ -20,27 +20,13 @@ jobs:
           auto-activate-base: false
           activate-environment: iris
           auto-update-conda: true
-          # --- FIX for PackagesNotFoundError ---
-          # 1. Update your environment.yml to specify a precise Python version.
-          #    Example (in environment.yml):
-          #    dependencies:
-          #      - python=3.9 # Or 3.10, 3.11 - choose a precise, common, and available version
-          #      - pip
-          #      # ... other dependencies
-          #    channels:
-          #      - conda-forge # IMPORTANT: Ensure this is present and high in the list
-          #      - defaults
-          # 2. If you cannot modify environment.yml easily, you can try passing it here:
-          # python-version: 3.9 # Uncomment and set a precise, common Python version
-          # channels: 'conda-forge,defaults' # Uncomment if not in env.yml or to prioritize
-          # ---------------------------------------------
 
       - name: Set up Java 8
         uses: actions/setup-java@v4
         with:
-          distribution: 'temurin' # Or 'zulu', 'corretto', etc.
-          java-version: '8' # This will typically install 8.0.x
-          cache: 'maven' # Caches Maven dependencies
+          distribution: 'temurin'
+          java-version: '8'
+          cache: 'maven'
 
       - name: Manually Install Maven 3.5.0
         run: |
@@ -80,12 +66,6 @@ jobs:
           # Add the CodeQL executable's directory to the PATH for all subsequent steps.
           echo "$(pwd)/codeql" >> $GITHUB_PATH
 
-          # Optional: VERIFY CodeQL bundle contents within THIS step (no 'codeql' command test here)
-          echo "--- CodeQL Bundle Preparation (within current step) ---"
-          ls -F # See the 'codeql/' directory
-          echo "PATH for this step (not yet updated by GITHUB_PATH for 'codeql' command): $PATH"
-          echo "-----------------------------------------------------"
-
       - name: Verify Environment Persistence (Java, Maven, CodeQL)
         # This NEW step will verify that the PATH and environment variables
         # set in previous steps are now correctly persisted.
@@ -96,7 +76,7 @@ jobs:
           echo "CODEQL_PATH (persisted): ${{ env.CODEQL_PATH }}"
           echo "Full PATH (persisted): $PATH"
 
-          # Now, test the commands that rely on the persisted PATH. These should work.
+          # These should demonstrate persistence
           java -version || { echo "ERROR: Java command not found or not working after persistence."; exit 1; }
           mvn -version  || { echo "ERROR: Maven command not found or not working after persistence."; exit 1; }
           codeql --version || { echo "ERROR: CodeQL command not found or not working after persistence."; exit 1; }
