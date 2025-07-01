@@ -123,6 +123,19 @@ jobs:
           conda run -n iris python src/neusym_vul.py --query cwe-022wLLM --run-id test --skip-posthoc-filter perwendel__spark_CVE-2018-9159_2.7.1
           echo "--------------------"
 
+      - name: Sanitize filenames in output folder (replace colons)
+        run: |
+          find output/ -depth -name '*:*' -execdir bash -c '
+            for file do
+              # Replace colons with hyphens
+              new_name=$(echo "$file" | tr ":" "-")
+              if [ "$file" != "$new_name" ]; then
+                mv -- "$file" "$new_name"
+                echo "Renamed: $file -> $new_name"
+              fi
+            done
+          ' _ {} +
+          
       - name: Upload output folder as artifact
         uses: actions/upload-artifact@v4
         with:
