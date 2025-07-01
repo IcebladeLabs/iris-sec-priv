@@ -10,6 +10,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+    
       - name: Build image
         run: docker build -f Dockerfile --platform linux/x86_64 -t iris:latest .
 
