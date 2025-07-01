@@ -1,4 +1,4 @@
-name: iris-sec CI Pipeline
+name: CI Pipeline
 
 on:
   push:
@@ -6,6 +6,16 @@ on:
       - main
 
 jobs:
+  verify-docker:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Build image
+        run: docker build -f Dockerfile --platform linux/x86_64 -t iris:latest .
+
+      - name: Run image
+        run: docker run --platform=linux/amd64 iris:latest
+        
   build-and-analyze:
     runs-on: ubuntu-latest
 
@@ -28,7 +38,7 @@ jobs:
           java-version: '8'
           cache: 'maven'
 
-      - name: Manually Install Maven 3.5.0
+      - name: Install Maven 3.5.0
         run: |
           MAVEN_VERSION="3.5.0"
           MAVEN_TAR="apache-maven-${MAVEN_VERSION}-bin.tar.gz"
@@ -57,7 +67,7 @@ jobs:
           # Download the CodeQL bundle
           curl -L https://github.com/github/codeql-action/releases/download/codeql-bundle-v2.15.0/codeql-bundle-linux64.tar.gz -o codeql-bundle.tar.gz || exit 1
 
-          # Extract the bundle (it usually extracts into a directory named 'codeql')
+          # Extract the bundle
           tar -xzf codeql-bundle.tar.gz || exit 1
 
           # Store the absolute path to the extracted CodeQL directory in GITHUB_ENV.
@@ -66,78 +76,28 @@ jobs:
           # Add the CodeQL executable's directory to the PATH for all subsequent steps.
           echo "$(pwd)/codeql" >> $GITHUB_PATH
 
-      - name: Verify Environment Persistence (Java, Maven, CodeQL)
-        # This NEW step will verify that the PATH and environment variables
-        # set in previous steps are now correctly persisted.
-        run: |
-          echo "--- Verifying Environment Persistence (New Step) ---"
-          echo "JAVA_HOME (persisted): $JAVA_HOME"
-          echo "MAVEN_HOME (persisted): $MAVEN_HOME"
-          echo "CODEQL_PATH (persisted): ${{ env.CODEQL_PATH }}"
-          echo "Full PATH (persisted): $PATH"
-
-          # These should demonstrate persistence
-          java -version || { echo "ERROR: Java command not found or not working after persistence."; exit 1; }
-          mvn -version  || { echo "ERROR: Maven command not found or not working after persistence."; exit 1; }
-          codeql --version || { echo "ERROR: CodeQL command not found or not working after persistence."; exit 1; }
-          echo "----------------------------------------------------"
-
       - name: Update CodeQL Query version in config
         run: sed -i "s/^CODEQL_QUERY_VERSION = \".*\"$/CODEQL_QUERY_VERSION = \"0.8.0\"/" src/config.py
 
-      - name: Verify CodeQL Executable Permissions
+      - name: Relocate cached output
         run: |
-          CODEQL_INSTALL_DIR="${{ env.CODEQL_PATH }}" # Use the env var we set
-          echo "Checking permissions for $CODEQL_INSTALL_DIR/codeql"
-          ls -l "$CODEQL_INSTALL_DIR/codeql"
-          # Expected output should show 'x' (execute) permissions, e.g., -rwxr-xr-x
-          if [ ! -x "$CODEQL_INSTALL_DIR/codeql" ]; then
-            echo "ERROR: CodeQL executable does not have execute permissions!"
-            echo "Attempting to add execute permissions..."
-            chmod +x "$CODEQL_INSTALL_DIR/codeql"
-            ls -l "$CODEQL_INSTALL_DIR/codeql" # Verify after chmod
-          fi
-          echo "------------------------------------------"
+          mv .github/cached_output/common output/
+          mv .github/cached_output/perwendel__spark_CVE-2018-9159_2.7.1 output/
           
       - name: Build perwendel-spark
         run: |
           echo "--- Building perwendel-spark ---"
-          # These echoes should now show values correctly persisted from SDKMAN step
-          echo "JAVA_HOME is: $JAVA_HOME"
-          echo "MAVEN_HOME is: $MAVEN_HOME"
           python scripts/setup.py --filter perwendel__spark_CVE-2018-9159_2.7.1
           echo "--------------------------------"
 
       - name: Generate CodeQL database
         run: |
           echo "--- Generating CodeQL database ---"
-          # 'codeql' command should be found here due to the $GITHUB_PATH update
-          codeql --version # Re-verify codeql is found just before its use
           python scripts/build_codeql_dbs.py --project perwendel__spark_CVE-2018-9159_2.7.1
           echo "----------------------------------"
 
       - name: Run IRIS
         run: |
           echo "--- Running IRIS ---"
-          export OPENAI_API_KEY="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"
           conda run -n iris python src/neusym_vul.py --query cwe-022wLLM --run-id test --skip-posthoc-filter perwendel__spark_CVE-2018-9159_2.7.1
           echo "--------------------"
-
-      - name: Sanitize filenames in output folder (replace colons)
-        run: |
-          find output/ -depth -name '*:*' -execdir bash -c '
-            for file do
-              # Replace colons with hyphens
-              new_name=$(echo "$file" | tr ":" "-")
-              if [ "$file" != "$new_name" ]; then
-                mv -- "$file" "$new_name"
-                echo "Renamed: $file -> $new_name"
-              fi
-            done
-          ' _ {} +
-          
-      - name: Upload output folder as artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: repository-output
-          path: output/
