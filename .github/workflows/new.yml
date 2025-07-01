@@ -122,3 +122,9 @@ jobs:
           export OPENAI_API_KEY="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"
           conda run -n iris python src/neusym_vul.py --query cwe-022wLLM --run-id test --skip-posthoc-filter perwendel__spark_CVE-2018-9159_2.7.1
           echo "--------------------"
+
+      - name: Upload output folder as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: repository-output
+          path: output/
