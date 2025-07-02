@@ -134,22 +134,32 @@ jobs:
 
       - name: Update JDK Path in dep_configs.json for ${{ matrix.java_version }}
         run: |
-          # Install moreutils for sponge
           sudo apt-get update && sudo apt-get install -y moreutils
-          
-          # Get the JAVA_HOME path from the output of the setup-java step for the current matrix version
-          CURRENT_JAVA_HOME="${{ steps.setup-java-matrix.outputs.java-home }}"
           CURRENT_JAVA_VERSION="${{ matrix.java_version }}"
+          JAVA_HOME_TO_USE=""
 
-          echo "JDK ${CURRENT_JAVA_VERSION} Home: $CURRENT_JAVA_HOME"
+          case "$CURRENT_JAVA_VERSION" in
+            "8")
+              JAVA_HOME_TO_USE="/opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/8.0.452-9/x64"
+              ;;
+            "11")
+              JAVA_HOME_TO_USE="/opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/11.0.23-9/x64"
+              ;;
+            "17")
+              JAVA_HOME_TO_USE="/opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/17.0.11-9/x64"
+              ;;
+            *)
+              echo "Error: Unsupported Java version '$CURRENT_JAVA_VERSION'."
+              exit 1
+              ;;
+          esac
 
-          # Use jq to update only the specific JDK version's path in dep_configs.json
           jq \
             --arg current_java_version "$CURRENT_JAVA_VERSION" \
-            --arg current_java_home "$CURRENT_JAVA_HOME" \
-            '.jdks[$current_java_version] = $current_java_home' \
+            --arg java_home_path "$JAVA_HOME_TO_USE" \
+            '.jdks[$current_java_version] = $java_home_path' \
             "dep_configs.json" | sponge "dep_configs.json"
-            
+
       - name: Relocate cached output for ${{ matrix.project_slug }}
         run: |
           mv .github/cached_output/common output/
