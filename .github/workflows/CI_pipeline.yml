@@ -43,7 +43,7 @@ jobs:
 
       - name: Adjust Java 8 Path in dep_configs.json
         run: |
-          sudo apt-get update && sudo apt-get install -y jq
+          sudo apt-get update && sudo apt-get install -y jq moreutils
           jq '.jdks."8" = "/opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/8.0.452-9/x64"' "dep_configs.json" | sponge "dep_configs.json"
 
       - name: Install Maven 3.5.0
