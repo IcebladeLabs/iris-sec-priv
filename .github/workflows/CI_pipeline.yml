@@ -35,7 +35,7 @@ jobs:
         run: |
           JSON_FILE=".github/workflows/to_build.json"
           
-          PROJECTS_JSON=$(cat "$JSON_FILE")
+          PROJECTS_JSON=$(cat "$JSON_FILE" | jq -c .)
 
           echo "Detected projects and parameters: $PROJECTS_JSON"
           echo "projects=$PROJECTS_JSON" >> $GITHUB_OUTPUT
