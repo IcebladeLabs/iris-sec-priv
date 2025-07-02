@@ -161,8 +161,7 @@ jobs:
             "dep_configs.json" | sponge "dep_configs.json"
 
       - name: Relocate cached output for ${{ matrix.project_slug }}
-        run: |
-          mv .github/cached_output/common output/
+        run: |          
           mv .github/cached_output/${{ matrix.project_slug }} output/
 
       - name: Build project ${{ matrix.project_slug }}
