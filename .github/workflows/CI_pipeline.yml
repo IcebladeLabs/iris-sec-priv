@@ -62,7 +62,7 @@ jobs:
           echo "Extracting Maven to ${MAVEN_INSTALL_DIR}..."
           sudo tar -xzf "/tmp/${MAVEN_TAR}" -C "/opt/maven/" || { echo "Failed to extract Maven!"; exit 1; }
           
-          echo "Setting MAVEN_HOME and adding to PATH..."
+          echo "Setting MAVEN_HOME and adding to PATH.."
           # Set MAVEN_HOME for subsequent steps
           echo "M2_HOME=${MAVEN_INSTALL_DIR}" >> $GITHUB_ENV
           echo "MAVEN_HOME=${MAVEN_INSTALL_DIR}" >> $GITHUB_ENV
