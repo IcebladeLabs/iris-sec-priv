@@ -22,7 +22,7 @@ jobs:
   get-projects:
     runs-on: ubuntu-latest
     outputs:
-      projects: ${{ steps.read-csv.outputs.projects }}
+      projects: ${{ steps.read-json.outputs.projects }}
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -30,34 +30,15 @@ jobs:
       - name: Install jq
         run: sudo apt-get update && sudo apt-get install -y jq
 
-      - name: Read projects and parameters from CSV
-        id: read-csv
+      - name: Read projects and parameters from JSON
+        id: read-json
         run: |
-          CSV_FILE=".github/workflows/to_build.csv"
+          JSON_FILE=".github/workflows/to_build.json"
+          
+          PROJECTS_JSON=$(cat "$JSON_FILE")
 
-          # Initialize an empty array for projects
-          PROJECTS_ARRAY="[]"
-
-          cat "$CSV_FILE" | grep -v '^#' | sed '/^\s*$/d' | while IFS=, read -r slug java_v maven_v gradle_v cwe_v; do
-            slug=$(echo "$slug" | xargs)
-            java_v=$(echo "$java_v" | xargs)
-            maven_v=$(echo "$maven_v" | xargs)
-            gradle_v=$(echo "$gradle_v" | xargs)
-            cwe_v=$(echo "$cwe_v" | xargs)
-
-            ROW_JSON=$(jq -n \
-              --arg slug "$slug" \
-              --arg java_v "$java_v" \
-              --arg maven_v "$maven_v" \
-              --arg gradle_v "$gradle_v" \
-              --arg cwe_v "$cwe_v" \
-              '{project_slug: $slug, java_version: $java_v, maven_version: $maven_v, gradle_version: $gradle_v, cwe: $cwe_v}')
-
-            PROJECTS_ARRAY=$(echo "$PROJECTS_ARRAY" | jq --argjson new_item "$ROW_JSON" '. + [$new_item]')
-          done
-
-          echo "Detected projects and parameters: $PROJECTS_ARRAY"
-          echo "projects=$PROJECTS_ARRAY" >> $GITHUB_OUTPUT
+          echo "Detected projects and parameters: $PROJECTS_JSON"
+          echo "projects=$PROJECTS_JSON" >> $GITHUB_OUTPUT
           
   build-and-analyze:
     needs: get-projects
