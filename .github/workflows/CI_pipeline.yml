@@ -35,16 +35,29 @@ jobs:
         run: |
           CSV_FILE=".github/workflows/to_build.csv"
 
-          PROJECTS_JSON=$(cat "$CSV_FILE" | grep -v '^#' | sed '/^\s*$/d' | while IFS=, read -r slug java_v maven_v gradle_v cwe_v; do
-            jq -n --arg slug "$slug" \
-                  --arg java_v "$java_v" \
-                  --arg maven_v "$maven_v" \
-                  --arg gradle_v "$gradle_v" \
-                  --arg cwe_v "$cwe_v" \
-                  '{project_slug: $slug, java_version: $java_v, maven_version: $maven_v, gradle_version: $gradle_v, cwe: $cwe_v}'
-          done | jq -s .)
-          echo "projects=$PROJECTS_JSON" >> $GITHUB_OUTPUT
+          # Initialize an empty array for projects
+          PROJECTS_ARRAY="[]"
 
+          cat "$CSV_FILE" | grep -v '^#' | sed '/^\s*$/d' | while IFS=, read -r slug java_v maven_v gradle_v cwe_v; do
+            slug=$(echo "$slug" | xargs)
+            java_v=$(echo "$java_v" | xargs)
+            maven_v=$(echo "$maven_v" | xargs)
+            gradle_v=$(echo "$gradle_v" | xargs)
+            cwe_v=$(echo "$cwe_v" | xargs)
+
+            ROW_JSON=$(jq -n \
+              --arg slug "$slug" \
+              --arg java_v "$java_v" \
+              --arg maven_v "$maven_v" \
+              --arg gradle_v "$gradle_v" \
+              --arg cwe_v "$cwe_v" \
+              '{project_slug: $slug, java_version: $java_v, maven_version: $maven_v, gradle_version: $gradle_v, cwe: $cwe_v}')
+
+            PROJECTS_ARRAY=$(echo "$PROJECTS_ARRAY" | jq --argjson new_item "$ROW_JSON" '. + [$new_item]')
+          done
+
+          echo "Detected projects and parameters: $PROJECTS_ARRAY"
+          echo "projects=$PROJECTS_ARRAY" >> $GITHUB_OUTPUT
           
   build-and-analyze:
     needs: get-projects
