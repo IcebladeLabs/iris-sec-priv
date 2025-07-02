@@ -185,11 +185,11 @@ jobs:
 
       - name: Verify output file existence
         run: |
-          SARIF_FILE="${{ matrix.project_slug }}/test/${{ matrix.cwe }}/results.sarif"
-          echo "Checking for .sarif file: $SARIF_FILE"
-          if [ -f "$SARIF_FILE" ]; then
-            echo ".sarif file found: $SARIF_FILE"
+          JSON_FILE="${{ matrix.project_slug }}/test/${{ matrix.cwe }}-final/results.json"
+          echo "Checking for .json file: $JSON_FILE"
+          if [ -f "$JSON_FILE" ]; then
+            echo ".json file found: $JSON_FILE"
           else
-            echo "Error: .sarif file not found at $SARIF_FILE"
+            echo "Error: .json file not found at $JSON_FILE"
             exit 1
           fi
