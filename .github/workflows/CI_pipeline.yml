@@ -184,7 +184,7 @@ jobs:
 
       - name: Verify output file existence
         run: |
-          JSON_FILE="${{ matrix.project_slug }}/test/${{ matrix.cwe }}-final/results.json"
+          JSON_FILE="output/${{ matrix.project_slug }}/test/${{ matrix.cwe }}-final/results.json"
           echo "Checking for .json file: $JSON_FILE"
           if [ -f "$JSON_FILE" ]; then
             echo ".json file found: $JSON_FILE"
