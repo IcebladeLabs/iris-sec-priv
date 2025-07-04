@@ -6,7 +6,7 @@ IRIS is a neurosymbolic framework that combines LLMs with static analysis for se
 
 At a high level, IRIS takes a project and a CWE (vulnerability class, such as path traversal vulnerability or CWE-22) as input, statically analyzes the project, and outputs a set of potential vulnerabilities (of type CWE) in the project.
 
-![iris workflow](../iris_arch.png)
+![iris workflow](../../iris_arch.png)
 
 ### Key Features
 
@@ -20,12 +20,12 @@ At a high level, IRIS takes a project and a CWE (vulnerability class, such as pa
 
 To get started with IRIS:
 
-1. Check out the [Environment Setup](getting-started/environment-setup.md) guide
-2. Follow our [Quickstart](getting-started/quickstart.md) tutorial
-3. Learn about [Supported CWEs](features/supported-cwes.md) and [Models](features/supported-models.md)
+1. Check out the [Environment Setup](environment-setup/docker.md) guide
+2. Follow our [Quickstart](quickstart.md) tutorial
+3. Learn about [Supported CWEs](features/cwes.md) and [Models](features/models.md)
 
 ### Resources
 
 - [CWE-Bench-Java Repository](https://github.com/iris-sast/cwe-bench-java)
 - [CWE-Bench-Java on Hugging Face](https://huggingface.co/datasets/iris-sast/CWE-Bench-Java)
-- [Project Results](core-concepts/results.md) 
+- [Project Results](architecture/results.md) 
