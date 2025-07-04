@@ -7,4 +7,4 @@ src = "docs"
 
 [output.html]
 git-repository-url = "https://github.com/iris-sast/iris"
-additional-css = ["theme/custom.css"]
+
