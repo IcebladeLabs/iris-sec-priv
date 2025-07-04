@@ -124,28 +124,34 @@ To quickly try IRIS on the example project `perwendel__spark_CVE-2018-9159_2.7.1
 
 ```sh
 # Build the project
-python scripts/setup.py --filter perwendel__spark_CVE-2018-9159_2.7.1
+python scripts/fetch_and_build.py --filter perwendel__spark_CVE-2018-9159_2.7.1
 
 # Generate the CodeQL database
 python scripts/build_codeql_dbs.py --project perwendel__spark_CVE-2018-9159_2.7.1
 
 # Run IRIS analysis
-python src/neusym_vul.py --query cwe-022wLLM --run-id test --llm qwen2.5-coder-7b perwendel__spark_CVE-2018-9159_2.7.1
+python src/iris.py --query cwe-022wLLM --run-id test --llm qwen2.5-coder-7b perwendel__spark_CVE-2018-9159_2.7.1
 ```
 
 This will build the project, generate the CodeQL database, and analyze it for CWE-022 vulnerabilities using the specified LLM (qwen2.5-coder-7b). The output of these three steps will be stored under `data/build-info/`, `data/codeql-dbs/`, and `output/` respectively.
 
 ## Supported CWEs
-Here are the following CWEs supported, that you can specify as an argument to `--query` when using `src/neusym_vul.py`. 
+Here are the following CWEs supported, that you can specify as an argument to `--query` when using `src/iris.py`. 
 
 - `cwe-022wLLM` - [CWE-022](https://cwe.mitre.org/data/definitions/22.html) (Path Traversal)
 - `cwe-078wLLM` - [CWE-078](https://cwe.mitre.org/data/definitions/78.html) (OS Command Injection)
 - `cwe-079wLLM` - [CWE-079](https://cwe.mitre.org/data/definitions/79.html) (Cross-Site Scripting)
 - `cwe-089wLLM` - [CWE-089](https://cwe.mitre.org/data/definitions/89.html) (SQL Injection)
 - `cwe-094wLLM` - [CWE-094](https://cwe.mitre.org/data/definitions/94.html) (Code Injection)
+- `cwe-295wLLM` - [CWE-295](https://cwe.mitre.org/data/definitions/295.html) (Improper Certificate Validation)
+- `cwe-352wLLM` - [CWE-352](https://cwe.mitre.org/data/definitions/352.html) (Cross-Site Request Forgery)
+- `cwe-502wLLM` - [CWE-502](https://cwe.mitre.org/data/definitions/502.html) (Deserialization of Untrusted Data)
+- `cwe-611wLLM` - [CWE-611](https://cwe.mitre.org/data/definitions/611.html) (Improper Restriction of XML External Entity Reference)
+- `cwe-807wLLM` - [CWE-807](https://cwe.mitre.org/data/definitions/807.html) (Reliance on Untrusted Inputs in a Security Decision)
+- `cwe-918wLLM` - [CWE-918](https://cwe.mitre.org/data/definitions/918.html) (Server-Side Request Forgery)
 
 ## Supported Models
-We support the following models with our models API wrapper (found in `src/models`) in the project. Listed below are the arguments you can use for `--llm` when using `src/neusym_vul.py`. You're free to use your own way of instantiating models or adding on to the existing library. Some of them require your own API key or license agreement on HuggingFace. 
+We support the following models with our models API wrapper (found in `src/models`) in the project. Listed below are the arguments you can use for `--llm` when using `src/iris.py`. You're free to use your own way of instantiating models or adding on to the existing library. Some of them require your own API key or license agreement on HuggingFace. 
 
 <details>
   <summary>List of Models</summary>

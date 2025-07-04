@@ -1,5 +1,7 @@
 """
-Usage: python fetch_one.py <project_slug>
+Fetch a single project from Github and checkout the buggy commit.
+
+Usage: python3 fetch_one.py <project_slug>
 
 The script fetches one project from Github, checking out the buggy commit,
 and then patches it with the essential information for it to be buildable.
@@ -7,54 +9,123 @@ The project is specified with the Project Slug that contains project name,
 CVE ID, and version tag.
 
 Example:
-
-``` bash
-$ python3 fetch_one.py apache__camel_CVE-2018-8041_2.20.3
-```
+    python3 fetch_one.py apache__camel_CVE-2018-8041_2.20.3
 """
 
 import os
-import argparse
-import csv
-import subprocess
 import sys
+import csv
+import argparse
+import subprocess
 from pathlib import Path
-sys.path.append(str(Path(__file__).parent.parent))
+
+# Set up import path for src
+THIS_SCRIPT_DIR = Path(__file__).parent
+ROOT_DIR = THIS_SCRIPT_DIR.parent
+sys.path.append(str(ROOT_DIR))
+
 from src.config import DATA_DIR
 
+
+def fetch_project(project_slug):
+    """Fetch a single project from the repository."""
+    project_info_path = Path(DATA_DIR) / "project_info.csv"
+    row = None
+
+    # Read project information from CSV
+    try:
+        with open(project_info_path, newline='') as csvfile:
+            reader = csv.reader(csvfile)
+            for line in reader:
+                if line[1] == project_slug:
+                    row = line
+                    break
+    except FileNotFoundError:
+        print(f"[fetch_one] Error: {project_info_path} not found")
+        return False
+    except Exception as e:
+        print(f"[fetch_one] Error reading project info: {e}")
+        return False
+
+    if not row:
+        print(f"[fetch_one] Project slug '{project_slug}' not found in project_info.csv")
+        return False
+
+    repo_url, commit_id = row[8], row[10]
+    target_dir = Path(DATA_DIR) / "project-sources" / project_slug
+
+    # Check if project already exists
+    if target_dir.exists():
+        print(f"[fetch_one] Skipping: {target_dir} already exists")
+        return True
+
+    # Clone repository
+    print(f"[fetch_one] Cloning repository from {repo_url}...")
+    try:
+        subprocess.run(
+            ["git", "clone", "--depth", "1", repo_url, str(target_dir)], 
+            check=True, capture_output=True, text=True
+        )
+    except subprocess.CalledProcessError as e:
+        print(f"[fetch_one] Failed to clone repository: {e.stderr}")
+        return False
+
+    # Fetch and checkout specific commit
+    print(f"[fetch_one] Fetching and checking out commit {commit_id}...")
+    try:
+        subprocess.run(
+            ["git", "fetch", "--depth", "1", "origin", commit_id], 
+            cwd=target_dir, check=True, capture_output=True, text=True
+        )
+        subprocess.run(
+            ["git", "checkout", commit_id], 
+            cwd=target_dir, check=True, capture_output=True, text=True
+        )
+    except subprocess.CalledProcessError as e:
+        print(f"[fetch_one] Failed to checkout commit: {e.stderr}")
+        return False
+
+    # Apply patch if available
+    patch_path = Path(DATA_DIR) / "patches" / f"{project_slug}.patch"
+    if patch_path.exists():
+        print(f"[fetch_one] Applying patch {patch_path}...")
+        try:
+            subprocess.run(
+                ["git", "apply", str(patch_path)], 
+                cwd=target_dir, check=True, capture_output=True, text=True
+            )
+        except subprocess.CalledProcessError as e:
+            print(f"[fetch_one] Failed to apply patch: {e.stderr}")
+            return False
+    else:
+        print(f"[fetch_one] No patch found; skipping patching.")
+
+    print(f"[fetch_one] Successfully fetched {project_slug}")
+    return True
+
+
+def main():
+    """Main function to handle argument parsing and project fetching."""
+    parser = argparse.ArgumentParser(
+        description="Fetch a single project from Github and checkout the buggy commit",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  python3 fetch_one.py apache__camel_CVE-2018-8041_2.20.3
+  python3 fetch_one.py spring-projects__spring-framework_CVE-2022-22965_5.2.19.RELEASE
+        """
+    )
+    parser.add_argument(
+        "project_slug", 
+        type=str, 
+        help="Project slug (e.g., apache__camel_CVE-2018-8041_2.20.3)"
+    )
+    
+    args = parser.parse_args()
+    
+    success = fetch_project(args.project_slug)
+    return 0 if success else 1
+
+
 if __name__ == "__main__":
-  parser = argparse.ArgumentParser()
-  parser.add_argument("project_slug", type=str)
-  args = parser.parse_args()
-
-  project_slug = args.project_slug
-  reader = csv.reader(open(f"{DATA_DIR}/project_info.csv"))
-  for line in reader:
-    if line[1] == project_slug:
-      row = line
-
-  repo_url = row[8]
-  commit_id = row[10]
-  target_dir = f"{DATA_DIR}/project-sources/{project_slug}"
-
-  if os.path.exists(f"{DATA_DIR}/project-sources/{project_slug}"):
-    print(f">> [fetch_one] skipping")
-    exit(0)
-
-  print(f">> [fetch_one] Cloning repository from `{repo_url}`...")
-  git_clone_cmd = ["git", "clone", "--depth", "1", repo_url, target_dir]
-  subprocess.run(git_clone_cmd)
-
-  print(f">> [fetch_one] Fetching and checking out commit `{commit_id}`...")
-  git_fetch_commit = ["git", "fetch", "--depth", "1", "origin", commit_id]
-  subprocess.run(git_fetch_commit, cwd=target_dir)
-  git_checkout_commit = ["git", "checkout", commit_id]
-  subprocess.run(git_checkout_commit, cwd=target_dir)
-
-  patch_dir = f"{DATA_DIR}/patches/{project_slug}.patch"
-  if os.path.exists(patch_dir):
-    print(f">> [fetch_one] Applying patch `{patch_dir}`...")
-    git_patch = ["git", "apply", patch_dir]
-    subprocess.run(git_patch, cwd=target_dir)
-  else:
-    print(f">> [fetch_one] There is no patch; skipping patching the repository")
+    sys.exit(main())

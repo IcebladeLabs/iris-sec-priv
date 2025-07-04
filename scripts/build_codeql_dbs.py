@@ -81,6 +81,8 @@ def create_codeql_database(project_slug, env, db_base_path, sources_base_path):
         print(f"Successfully created CodeQL database for {project_slug}")
     except subprocess.CalledProcessError as e:
         print(f"Error creating CodeQL database for {project_slug}: {e}")
+        print(f'\nStdout Info:\n{e.stdout.decode()}')
+        print(f'Stderr Info:\n{e.stderr.decode()}')
         raise
 
 def main():
