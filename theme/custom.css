@@ -1,0 +1,65 @@
+/* Custom theme styles for IRIS documentation */
+
+:root {
+    --primary-color: #2c3e50;
+    --link-color: #3498db;
+    --sidebar-bg: #f8f9fa;
+}
+
+/* Improve readability */
+.content {
+    max-width: 850px;
+    margin: 0 auto;
+    padding: 0 15px;
+    line-height: 1.6;
+}
+
+/* Style links */
+.content a {
+    color: var(--link-color);
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    transition: border-color 0.2s ease;
+}
+
+.content a:hover {
+    border-bottom-color: var(--link-color);
+}
+
+/* Style code blocks */
+pre {
+    background-color: #f6f8fa;
+    border-radius: 6px;
+    padding: 16px;
+}
+
+/* Style tables */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1em 0;
+}
+
+th, td {
+    padding: 8px 12px;
+    border: 1px solid #dfe2e5;
+}
+
+th {
+    background-color: var(--sidebar-bg);
+}
+
+/* Style blockquotes */
+blockquote {
+    border-left: 4px solid var(--primary-color);
+    margin: 1em 0;
+    padding-left: 1em;
+    color: #666;
+}
+
+/* Style headings */
+h1, h2, h3, h4, h5, h6 {
+    color: var(--primary-color);
+    margin-top: 1.5em;
+    margin-bottom: 0.5em;
+} 
