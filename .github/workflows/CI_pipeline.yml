@@ -170,7 +170,11 @@ jobs:
       - name: Build project ${{ matrix.project_slug }}
         run: |
           echo "--- Building ${{ matrix.project_slug }} ---"
+<<<<<<< HEAD
           python scripts/fetch_and_build.py --filter ${{ matrix.project_slug }}
+=======
+          python scripts/setup.py --filter ${{ matrix.project_slug }}
+>>>>>>> c8691bcee1bf4a86b3a2ea657ce14fdaebc5a82f
           echo "--------------------------------"
 
       - name: Generate CodeQL database for ${{ matrix.project_slug }}
@@ -182,7 +186,11 @@ jobs:
       - name: Run IRIS for ${{ matrix.project_slug }} with CWE ${{ matrix.cwe }}
         run: |
           echo "--- Running IRIS for ${{ matrix.project_slug }} ---"
+<<<<<<< HEAD
           conda run -n iris python src/iris.py --query ${{ matrix.cwe }} --run-id test --overwrite-api-candidates --overwrite-func-param-candidates --skip-posthoc-filter ${{ matrix.project_slug }}
+=======
+          conda run -n iris python src/neusym_vul.py --query ${{ matrix.cwe }} --run-id test --overwrite-api-candidates --overwrite-func-param-candidates --skip-posthoc-filter ${{ matrix.project_slug }}
+>>>>>>> c8691bcee1bf4a86b3a2ea657ce14fdaebc5a82f
           echo "--------------------"
 
       - name: Verify output file existence
